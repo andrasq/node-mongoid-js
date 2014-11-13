@@ -1,5 +1,5 @@
-qmongoid
-========
+mongoid-js
+==========
 
 Generate unique ids quickly.  The ids are constructed like MongoDB
 document ids, built out of a timestamp, system id, process id and sequence
