@@ -1,12 +1,16 @@
 {
   "name": "mongoid-js",
-  "version": "1.0.1",
-  "description": "quick unique ids, mongoid compatible",
+  "version": "1.0.2",
+  "description": "very quick mongoid compatible unique id strings",
   "license": "Apache-2.0",
   "main": "index.js",
   "author": {
     "name": "Andras",
     "url": "http://github.com/andrasq"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/andrasq/node-mongoid-js"
   },
   "engines": {
     "node": ">=0.0.0"

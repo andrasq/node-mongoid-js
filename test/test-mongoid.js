@@ -26,6 +26,11 @@ module.exports.require = {
     },
 
     tests: {
+        testShouldNotBreakOnPackageJson: function(test) {
+            var json = require('../package.json');
+            test.done();
+        },
+
         testShouldExportMongoidFunction: function(test) {
             var mongoid = require('../mongoid');
             test.ok(mongoid.mongoid);
