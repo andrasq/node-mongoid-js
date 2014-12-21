@@ -87,7 +87,7 @@ MongoId.prototype.fetch = function() {
     }
 
     if (++this.sequenceId % 16 === 0) {
-        this.sequencePrefix = hexFormat(Math.floor(this.sequenceId / 16).toString(16), 5);
+        this.sequencePrefix = hexFormat((this.sequenceId / 16 | 0).toString(16), 5);
     }
     return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
 };
