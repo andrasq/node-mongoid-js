@@ -1,7 +1,7 @@
 {
   "name": "mongoid-js",
-  "version": "1.0.2",
-  "description": "very quick mongoid compatible unique id strings",
+  "version": "1.0.3",
+  "description": "very fast mongoid compatible unique ids",
   "license": "Apache-2.0",
   "main": "index.js",
   "author": {
@@ -21,6 +21,7 @@
   "keywords": [
     "Andras",
     "quick",
+    "fast",
     "mongoid",
     "globally",
     "unique",

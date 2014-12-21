@@ -20,15 +20,20 @@
 
 'use strict';
 
-module.exports = mongoid;
-module.exports.mongoid = MongoId;
+module.exports = MongoId;
+module.exports.mongoid = mongoid;
 module.exports.MongoId = MongoId;
 
 var globalSingleton = null;
 
 function mongoid( ) {
-    if (!globalSingleton) globalSingleton = new MongoId();
-    return globalSingleton.fetch();
+    if (globalSingleton) {
+        return globalSingleton.fetch();
+    }
+    else {
+        globalSingleton = new MongoId();
+        return globalSingleton.fetch();
+    }
 }
 
 function MongoId( machineId ) {
@@ -40,42 +45,53 @@ function MongoId( machineId ) {
     else if (machineId < 0 || machineId > 0x1000000)
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
 
-    this.machineIdStr = hexFormat(machineId, 6);
-    this.pidStr = hexFormat(process.pid, 4);
-    this.lastTimestamp = null;
+    this.processIdStr = this.hexFormat(machineId, 6) + this.hexFormat(process.pid, 4);
     this.sequenceId = 0;
     this.id = null;
+    this.sequenceStartTimestamp = this._getTimestamp();
 }
 
-MongoId.prototype.fetch = function() {
-    var id;
-    var timestamp = Math.floor(Date.now()/1000);
-
-    // soft-init on first call and on every new second
-    if (timestamp !== this.lastTimestamp) {
-        this.lastTimestamp = timestamp;
-        this.timestampStr = hexFormat(timestamp, 8);
-        if (!this.sequenceId) this.sequenceStartTimestamp = timestamp;
+var timestampCache = (function() {
+    var _timestamp;
+    var _timestampStr;
+    var _ncalls = 0;
+    function getTimestamp( ) {
+        if (!_timestamp) getTimestampStr();
+        return _timestamp;
     }
+    function getTimestampStr( ) {
+        if (!_timestamp || ++_ncalls > 1000) {
+            _ncalls = 0;
+            _timestamp = Date.now();
+            _timestampStr = hexFormat(Math.floor(_timestamp/1000), 8);
+            setTimeout(function(){ _timestamp = null; }, 10);
+        }
+        return _timestampStr;
+    }
+    return [getTimestamp, getTimestampStr];
+})();
+MongoId.prototype._getTimestamp = timestampCache[0];
+MongoId.prototype._getTimestampStr = timestampCache[1];
 
-    // sequence wrapping and overflow check
+MongoId.prototype.fetch = function() {
     if (this.sequenceId >= 0x1000000) {
-        if (timestamp === this.sequenceStartTimestamp) {
+        var _timestamp = this._getTimestamp();
+        if (_timestamp === this.sequenceStartTimestamp) {
             throw new Error("mongoid sequence overflow: more than 16 million ids generated in 1 second");
         }
         this.sequenceId = 0;
-        this.sequenceStartTimestamp = timestamp;
+        this.sequenceStartTimestamp = _timestamp;
     }
 
-    id = this.timestampStr + this.machineIdStr + this.pidStr + hexFormat(++this.sequenceId, 6);
-    return id;
+    this.sequenceId++;
+    return this._getTimestampStr() + this.processIdStr + this.hexFormat(this.sequenceId, 6);
 };
+MongoId.prototype.mongoid = MongoId.prototype.fetch;
 
+var _zeroPadding = ["", "0", "00", "000", "0000", "00000", "000000", "0000000"];
 function hexFormat(n, width) {
     var s = n.toString(16);
-    while (s.length + 2 < width) s = "00" + s;
-    while (s.length < width) s = "0" + s;
-    return s;
+    return _zeroPadding[width - s.length] + s;
 }
 MongoId.prototype.hexFormat = hexFormat;
 
@@ -93,6 +109,7 @@ MongoId.parse = function( idstring ) {
         sequence:  parseInt(idstring.slice(18, 18+6), 16)
     };
 };
+// make the class method available as an instance method too
 MongoId.prototype.parse = function( idstring ) {
     return MongoId.parse(this.toString());
 };
