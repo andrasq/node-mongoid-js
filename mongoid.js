@@ -47,6 +47,7 @@ function MongoId( machineId ) {
 
     this.processIdStr = this.hexFormat(machineId, 6) + this.hexFormat(process.pid, 4);
     this.sequenceId = 0;
+    this.sequencePrefix = "00000";
     this.id = null;
     this.sequenceStartTimestamp = this._getTimestamp();
 }
@@ -73,18 +74,22 @@ var timestampCache = (function() {
 MongoId.prototype._getTimestamp = timestampCache[0];
 MongoId.prototype._getTimestampStr = timestampCache[1];
 
+var _hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
 MongoId.prototype.fetch = function() {
     if (this.sequenceId >= 0x1000000) {
         var _timestamp = this._getTimestamp();
         if (_timestamp === this.sequenceStartTimestamp) {
+            // TODO: find a more elegant way to deal with overflow
             throw new Error("mongoid sequence overflow: more than 16 million ids generated in 1 second");
         }
         this.sequenceId = 0;
         this.sequenceStartTimestamp = _timestamp;
     }
 
-    this.sequenceId++;
-    return this._getTimestampStr() + this.processIdStr + this.hexFormat(this.sequenceId, 6);
+    if (++this.sequenceId % 16 === 0) {
+        this.sequencePrefix = hexFormat(Math.floor(this.sequenceId / 16).toString(16), 5);
+    }
+    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
 

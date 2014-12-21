@@ -1,10 +1,11 @@
 mongoid-js
 ==========
 
-Generate unique ids quickly.  The ids are constructed like MongoDB
-document ids, built out of a timestamp, system id, process id and sequence
-number.  Similar to require('bson').ObjectID(), but at 3 million ids / sec,
-15x faster.
+very very fast MongoID compatible unique id generator
+
+Generates unique ids.  The ids are constructed like MongoDB document ids,
+built out of a timestamp, system id, process id and sequence number.  Similar
+to require('bson').ObjectID(), but at 12 million ids / sec, 66 x faster.
 
 The ids are guaranteed unique on any one server, and can be configured
 to be unique across a cluster of up to 16 million (2^24) servers.
