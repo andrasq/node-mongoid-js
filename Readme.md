@@ -37,11 +37,11 @@ MongoId singleton initialized with a random machine id.  All subsequent calls
 to mongoid() in this process will fetch ids from this singleton.
 
         // ids with a randomly chosen system id (here 0x40e281)
-        var mongoid = require('mongoid-js');
+        var mongoid = require('mongoid-js').mongoid;
         var id1 = mongoid();            // => 543f376340e2816497000001
         var id2 = mongoid();            // => 543f376340e2816497000002
 
-### new MongoId( systemId ).fetch( )
+### MongoId( systemId )
 
 unique id factory that embeds the given system id in each generated unique id.
 By a systematic assignment of system ids to servers, this approach can guarantee
@@ -51,10 +51,29 @@ globally unique ids (ie, globally for an installation).
         var MongoId = require('mongoid-js').MongoId;
         var systemId = 4656;
         var idFactory = new MongoId(systemId);
+
+#### id.fetch( )
+
         var id1 = idFactory().fetch();  // => 543f3789001230649f000001
         var id2 = idFactory().fetch();  // => 543f3789001230649f000002
 
-### MongoId.parse( idString )
+#### id.parse( )
+
+same as MongoId.parse(id.toString()), see below
+
+#### id.getTimestamp( )
+
+same as MongoId.getTimestam(id.toString()), see below
+
+#### id.toString( )
+
+each MongoId object itself can have a distinct unique id, created on demand
+when toString() is called.  The object invokes itself as an id factory and
+fetches for itself the next id in the sequence.  The
+
+### Class Methods
+
+#### MongoId.parse( idString )
 
 Decompose the id string into its parts -- unix timestamp, machine id,
 process id and sequence number.  Unix timestamps are seconds since the
@@ -67,7 +86,7 @@ while getTimestamp() returns milliseconds.
         //      pid: 25751,
         //      sequence: 19 }
 
-### MongoId.getTimestamp( idString )
+#### MongoId.getTimestamp( idString )
 
 Return just the javascript timestamp part of the id.  Javascript timestamps
 are milliseconds since the start of the epoch.  Each mongoid embeds a seconds
