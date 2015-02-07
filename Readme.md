@@ -11,6 +11,23 @@ The ids are guaranteed unique on any one server, and can be configured
 to be unique across a cluster of up to 16 million (2^24) servers.
 Uniqueness is guaranteed by unique {server, process} id pairs.
 
+
+## Installation
+
+        npm install mongoid-js
+        npm test mongoid-js
+
+
+## Summary
+
+        var mongoid = require('mongoid-js');
+        var id = mondoid();             // => 543f376340e2816497000001
+
+        var MongoId = require('mongoid-js').MongoId;
+        var idFactory = new MongoId(/*systemId:*/ 0x123);
+        var id = idFactory.fetch();     // => 543f3789001230649f000001
+
+
 ## Functions
 
 ### mongoid( )
@@ -41,7 +58,8 @@ globally unique ids (ie, globally for an installation).
 
 Decompose the id string into its parts -- unix timestamp, machine id,
 process id and sequence number.  Unix timestamps are seconds since the
-start of the epoch (1970-01-01 UTC)
+start of the epoch (1970-01-01 GMT).  Note that parse() returns seconds,
+while getTimestamp() returns milliseconds.
 
         var parts = MongoId.parse("543f376340e2816497000013");
         // => { timestamp: 1413429091,
@@ -52,8 +70,8 @@ start of the epoch (1970-01-01 UTC)
 ### MongoId.getTimestamp( idString )
 
 Return just the javascript timestamp part of the id.  Javascript timestamps
-are milliseconds since the start of the epoch (they are 1000 x more than the
-unix timestamp.)
+are milliseconds since the start of the epoch.  Each mongoid embeds a seconds
+precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 
         MongoId.getTimestamp("543f376340e2816497000013");
         // => 1413429091000
