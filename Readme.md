@@ -47,12 +47,20 @@ unique id factory that embeds the given system id in each generated unique id.
 By a systematic assignment of system ids to servers, this approach can guarantee
 globally unique ids (ie, globally for an installation).
 
+The systemId must be an integer between 0 and 16777215 (0xFFFFFF), inclusive.
+
         // ids with a unique system id
         var MongoId = require('mongoid-js').MongoId;
         var systemId = 4656;
         var idFactory = new MongoId(systemId);
 
 #### id.fetch( )
+
+generate and return the next id in the sequence.  Up to 16 million distinct
+ids (16777216) can be fetched during the same wallclock second; trying to
+fetch more throws an error.  The second starts when the clock reads _*000_
+milliseconds, not when the first id is fetched.  The second ends 1000
+milliseconds after the start, when the clock next reads _*000_ milliseconds.
 
         var id1 = idFactory().fetch();  // => 543f3789001230649f000001
         var id2 = idFactory().fetch();  // => 543f3789001230649f000002
