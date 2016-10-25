@@ -3,7 +3,7 @@
  * Ids are a hex number built out of the timestamp, a per-server unique id,
  * the process id and a sequence number.
  *
- * Copyright (C) 2014 Andras Radics
+ * Copyright (C) 2014,2016 Andras Radics
  * Licensed under the Apache License, Version 2.0
  *
  * MongoDB object ids are 12 bytes (24 hexadecimal chars), composed out of
