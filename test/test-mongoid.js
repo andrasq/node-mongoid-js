@@ -57,7 +57,7 @@ module.exports.require = {
 module.exports.mongoid_function = {
     testShouldReturn24CharHexString: function(test) {
         var id = mongoid();
-        test.ok(id.match(/[0-9a-fA-F]{24}/), "should return a 24-char id string");
+        test.ok(id.match(/^[0-9a-fA-F]{24}$/), "should return a 24-char id string");
         test.done();
     },
 
