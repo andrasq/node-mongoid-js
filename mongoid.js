@@ -128,7 +128,7 @@ MongoId.prototype.parse = function( idstring ) {
 MongoId.getTimestamp = function( idstring ) {
     return parseInt(idstring.slice(0, 8), 16) * 1000;
 };
-MongoId.prototype.getTimestamp = function( idstring ) {
+MongoId.prototype.getTimestamp = function( ) {
     return MongoId.getTimestamp(this.toString());
 };
 
