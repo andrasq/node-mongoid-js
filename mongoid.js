@@ -64,7 +64,8 @@ var timestampCache = (function() {
         if (!_timestamp || ++_ncalls > 1000) {
             _ncalls = 0;
             _timestamp = Date.now();
-            setTimeout(function(){ _timestamp = null; }, 10);
+            var msToNextTimestamp = 1000 - _timestamp % 1000;
+            setTimeout(function(){ _timestamp = null; }, Math.min(msToNextTimestamp - 1, 100));
             _timestamp -= _timestamp % 1000;
             _timestampStr = hexFormat(_timestamp/1000, 8);
         }
@@ -89,8 +90,8 @@ MongoId.prototype.fetch = function() {
         this.sequenceStartTimestamp = _timestamp;
     }
 
-    if (++this.sequenceId % 16 === 0) {
-        this.sequencePrefix = hexFormat((this.sequenceId / 16 | 0).toString(16), 5);
+    if ((this.sequenceId & 0xF) === 0) {
+        this.sequencePrefix = hexFormat((this.sequenceId >>> 4).toString(16), 5);
     }
     return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
 };
