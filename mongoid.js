@@ -64,8 +64,9 @@ var timestampCache = (function() {
         if (!_timestamp || ++_ncalls > 1000) {
             _ncalls = 0;
             _timestamp = Date.now();
-            _timestampStr = hexFormat(Math.floor(_timestamp/1000), 8);
             setTimeout(function(){ _timestamp = null; }, 10);
+            _timestamp -= _timestamp % 1000;
+            _timestampStr = hexFormat(_timestamp/1000, 8);
         }
         return _timestampStr;
     }
