@@ -76,7 +76,9 @@ MongoId.prototype._getTimestampStr = timestampCache[1];
 
 var _hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
 MongoId.prototype.fetch = function() {
+    this.sequenceId += 1;
     if (this.sequenceId >= 0x1000000) {
+        // sequence wrapped, we can make an id only if the timestamp advanced
         var _timestamp = this._getTimestamp();
         if (_timestamp === this.sequenceStartTimestamp) {
             // TODO: find a more elegant way to deal with overflow

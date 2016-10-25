@@ -71,7 +71,7 @@ same as MongoId.parse(id.toString()), see below
 
 #### id.getTimestamp( )
 
-same as MongoId.getTimestam(id.toString()), see below
+same as MongoId.getTimestamp(id.toString()), see below
 
 #### id.toString( )
 
