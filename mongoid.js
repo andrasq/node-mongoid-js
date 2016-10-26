@@ -44,12 +44,12 @@ function MongoId( machineId ) {
     if (!machineId) machineId = Math.floor(Math.random() * 0x1000000);
     else if (machineId < 0 || machineId > 0x1000000)
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
-
-    this.processIdStr = this.hexFormat(machineId, 6) + this.hexFormat(process.pid, 4);
+    if (!process.pid) process.pid = 20000;
+    this.processIdStr = hexFormat(machineId, 6) + hexFormat(process.pid, 4);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
     this.id = null;
-    this.sequenceStartTimestamp = this._getTimestamp();
+    this.sequenceStartTimestamp = MongoId.getTimestamp(this.toString());
 }
 
 var timestampCache = (function() {
