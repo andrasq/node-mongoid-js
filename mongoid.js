@@ -51,6 +51,7 @@ function MongoId( machineId ) {
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
 
     // if process.pid not available, use a random 2-byte number between 10k and 30k
+    // suggestions for better browserify support from @cordovapolymer at github
     var processId = process.pid || 10000 + Math.floor(Math.random() * 20000);
 
     this.processIdStr = hexFormat(machineId, 6) + hexFormat(processId, 4);
