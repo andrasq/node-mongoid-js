@@ -50,7 +50,10 @@ function MongoId( machineId ) {
     else if (machineId < 0 || machineId > 0x1000000)
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
 
-    this.processIdStr = this.hexFormat(machineId, 6) + this.hexFormat(process.pid, 4);
+    // if process.pid not available, use a random 2-byte number between 10k and 30k
+    var processId = process.pid || 10000 + Math.floor(Math.random() * 20000);
+
+    this.processIdStr = hexFormat(machineId, 6) + hexFormat(processId, 4);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
     this.id = null;
