@@ -57,7 +57,7 @@ module.exports.require = {
 module.exports.mongoid_function = {
     testShouldReturn24CharHexString: function(test) {
         var id = mongoid();
-        test.ok(id.match(/[0-9a-fA-F]{24}/), "should return a 24-char id string");
+        test.ok(id.match(/^[0-9a-fA-F]{24}$/), "should return a 24-char id string");
         test.done();
     },
 
@@ -75,6 +75,26 @@ module.exports.mongoid_function = {
         //console.log("mongoid(): 10k in " + (t2-t1) + " ms");
         test.ok(t2-t1 < 100, "should generate > 100k ids / sec");
         test.done();
+    },
+
+    'should throw Error if wrapped in same second': function(t) {
+        factory = new MongoId(0x111111);
+        factory.sequenceId = 0xffffff;
+        factory.sequencePrefix = "fffff";
+        // note: race condition: this test will fail if the seconds increase before the fetch
+        t.throws(function(){ factory.fetch() }, 'should throw');
+        t.done();
+    },
+
+    'should wrap at max id': function(t) {
+        factory = new MongoId(0x222222);
+        factory.sequenceId = 0xfffffe;
+        factory.sequencePrefix = "fffff";
+        factory.sequenceStartTimestamp -= 1000;
+        t.equal(factory.fetch().slice(-6), 'ffffff');
+        t.equal(factory.fetch().slice(-6), '000000');
+        t.equal(factory.fetch().slice(-6), '000001');
+        t.done();
     },
 };
 
