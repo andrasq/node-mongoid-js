@@ -38,6 +38,9 @@ function mongoid( ) {
     }
 }
 
+var _getTimestamp = null;
+var _getTimestampStr = null;
+
 function MongoId( machineId ) {
     // if called as a function, return an id from the singleton
     if (this === global || !this) return mongoid();
@@ -51,7 +54,7 @@ function MongoId( machineId ) {
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
     this.id = null;
-    this.sequenceStartTimestamp = this._getTimestamp();
+    this.sequenceStartTimestamp = _getTimestamp();
 }
 
 var timestampCache = (function() {
@@ -75,8 +78,8 @@ var timestampCache = (function() {
     }
     return [getTimestamp, getTimestampStr];
 })();
-MongoId.prototype._getTimestamp = timestampCache[0];
-MongoId.prototype._getTimestampStr = timestampCache[1];
+_getTimestamp = MongoId.prototype._getTimestamp = timestampCache[0];
+_getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 
 var _hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
 MongoId.prototype.fetch = function() {
