@@ -118,6 +118,7 @@ MongoId.prototype.toString = function( ) {
 };
 
 MongoId.parse = function( idstring ) {
+    // TODO: should throw an Error not coerce, but is a breaking change
     if (typeof idstring !== 'string') idstring = "" + idstring;
     return {
         timestamp: parseInt(idstring.slice( 0,  0+8), 16),
