@@ -23,6 +23,7 @@
 module.exports = MongoId;
 module.exports.mongoid = mongoid;
 module.exports.MongoId = MongoId;
+module.exports._singleton = globalSingleton;
 
 var globalSingleton = null;
 
@@ -32,6 +33,7 @@ function mongoid( ) {
     }
     else {
         globalSingleton = new MongoId();
+        module.exports._singleton = globalSingleton;
         return globalSingleton.fetch();
     }
 }
