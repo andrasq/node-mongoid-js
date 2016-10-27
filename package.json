@@ -30,6 +30,6 @@
   "dependencies": {
   },
   "devDependencies": {
-    "nodeunit": "0.9.0"
+    "qnit": "*"
   }
 }
