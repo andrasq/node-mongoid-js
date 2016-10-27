@@ -1,6 +1,6 @@
 {
   "name": "mongoid-js",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "very fast mongoid compatible unique ids",
   "license": "Apache-2.0",
   "main": "mongoid.js",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/andrasq/node-mongoid-js"
+    "url": "git://github.com/andrasq/node-mongoid-js.git"
   },
   "engines": {
     "node": ">=0.0.0"
