@@ -107,6 +107,7 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 Change Log
 ----------
 
+- 1.1.0 - tentative `browserify` support: use a random pid if process.pid is not set, avoid object methods in constructor, 100% unit test coverage
 - 1.0.7 - fix getTimestamp and quantize correctly, deprecate index.js, test with qnit, fix sequence wrapping
 - 1.0.6 - doc edits
 - 1.0.5 - stable, fast version
