@@ -23,6 +23,7 @@
 module.exports = MongoId;
 module.exports.mongoid = mongoid;
 module.exports.MongoId = MongoId;
+module.exports._singleton = globalSingleton;
 
 var globalSingleton = null;
 
@@ -32,9 +33,13 @@ function mongoid( ) {
     }
     else {
         globalSingleton = new MongoId();
+        module.exports._singleton = globalSingleton;
         return globalSingleton.fetch();
     }
 }
+
+var _getTimestamp = null;
+var _getTimestampStr = null;
 
 function MongoId( machineId ) {
     // if called as a function, return an id from the singleton
@@ -42,14 +47,18 @@ function MongoId( machineId ) {
 
     // if no machine id specified, use a 3-byte random number
     if (!machineId) machineId = Math.floor(Math.random() * 0x1000000);
-    else if (machineId < 0 || machineId > 0x1000000)
+    else if (machineId < 0 || machineId >= 0x1000000)
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
 
-    this.processIdStr = this.hexFormat(machineId, 6) + this.hexFormat(process.pid, 4);
+    // if process.pid not available, use a random 2-byte number between 10k and 30k
+    // suggestions for better browserify support from @cordovapolymer at github
+    var processId = process.pid || 10000 + Math.floor(Math.random() * 20000);
+
+    this.processIdStr = hexFormat(machineId, 6) + hexFormat(processId, 4);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
     this.id = null;
-    this.sequenceStartTimestamp = this._getTimestamp();
+    this.sequenceStartTimestamp = _getTimestamp();
 }
 
 var timestampCache = (function() {
@@ -73,8 +82,8 @@ var timestampCache = (function() {
     }
     return [getTimestamp, getTimestampStr];
 })();
-MongoId.prototype._getTimestamp = timestampCache[0];
-MongoId.prototype._getTimestampStr = timestampCache[1];
+_getTimestamp = MongoId.prototype._getTimestamp = timestampCache[0];
+_getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 
 var _hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
 MongoId.prototype.fetch = function() {
@@ -110,6 +119,7 @@ MongoId.prototype.toString = function( ) {
 };
 
 MongoId.parse = function( idstring ) {
+    // TODO: should throw an Error not coerce, but is a breaking change
     if (typeof idstring !== 'string') idstring = "" + idstring;
     return {
         timestamp: parseInt(idstring.slice( 0,  0+8), 16),
