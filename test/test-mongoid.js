@@ -171,7 +171,7 @@ module.exports.MongoId_class = {
         t.done();
     },
 
-    '_getTimestamp should return second precision timestamps 50ms apart': function(t) {
+    '_getTimestamp should return second precision timestamps 100ms apart': function(t) {
         var factory = new MongoId();
         var t1 = factory._getTimestamp();
         setTimeout(function(){
