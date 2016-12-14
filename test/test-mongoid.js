@@ -57,7 +57,7 @@ module.exports.require = {
 module.exports.mongoid_function = {
     testShouldReturn24CharHexString: function(test) {
         var id = mongoid();
-        test.ok(id.match(/[0-9a-fA-F]{24}/), "should return a 24-char id string");
+        test.ok(id.match(/^[0-9a-fA-F]{24}$/), "should return a 24-char id string");
         test.done();
     },
 
@@ -75,6 +75,20 @@ module.exports.mongoid_function = {
         //console.log("mongoid(): 10k in " + (t2-t1) + " ms");
         test.ok(t2-t1 < 100, "should generate > 100k ids / sec");
         test.done();
+    },
+
+    'it should use the global singleton': function(t) {
+        mongoid();
+        var called = false;
+        var actualFetch = mongoid._singleton.fetch;
+        mongoid._singleton.fetch = function(){
+            called = true;
+            return actualFetch.call(mongoid._singleton)
+        };
+        mongoid();
+        mongoid._singleton.fetch = actualFetch;
+        t.equal(called, true);
+        t.done();
     },
 };
 
@@ -107,6 +121,68 @@ module.exports.MongoId_class = {
         test.done();
     },
 
+    'should throw Error if wrapped in same second': function(t) {
+        factory = new MongoId(0x111111);
+        factory.sequenceId = 0xffffff;
+        factory.sequencePrefix = "fffff";
+        // note: race condition: this test will fail if the seconds increase before the fetch
+        t.throws(function(){ factory.fetch() }, 'should throw');
+        t.done();
+    },
+
+    'should wrap at max id': function(t) {
+        factory = new MongoId(0x222222);
+        factory.sequenceId = 0xfffffe;
+        factory.sequencePrefix = "fffff";
+        factory.sequenceStartTimestamp -= 1000;
+        t.equal(factory.fetch().slice(-6), 'ffffff');
+        t.equal(factory.fetch().slice(-6), '000000');
+        t.equal(factory.fetch().slice(-6), '000001');
+        t.done();
+    },
+
+    'id should include timestamp': function(t) {
+        var t1 = Date.now();
+        var id = new MongoId().toString();
+        var timestamp = MongoId.getTimestamp(id);
+        t.ok(t1 - t1 % 1000 <= timestamp && timestamp <= Date.now());
+        t.done();
+    },
+
+    'id should include pid': function(t) {
+        var id = new MongoId().toString();
+        t.ok(id.indexOf(process.pid.toString(16)) == 14);
+        t.done();
+    },
+
+    'id should include a random pid if process.pid is not set': function(t) {
+        var processPid = process.pid;
+        delete process.pid;
+        var id = new MongoId().toString();
+        var pid = parseInt(id.slice(14, 18), 16);
+        t.ok(pid >= 10000 && pid <= 32767);
+        process.pid = processPid;
+        t.done();
+    },
+
+    'it should reject a machine id out of range': function(t) {
+        t.throws(function(){ new MongoId(-1) });
+        t.throws(function(){ new MongoId(0xffffff + 1) });
+        t.done();
+    },
+
+    '_getTimestamp should return second precision timestamps 100ms apart': function(t) {
+        var factory = new MongoId();
+        var t1 = factory._getTimestamp();
+        setTimeout(function(){
+            var t2 = factory._getTimestamp();
+            t.equal(t1 % 1000, 0);
+            t.equal(t2 % 1000, 0);
+            t.ok(t2 >= t1);
+            t.done();
+        }, 100 + 5);
+    },
+
     testShouldParseId: function(test) {
         var timestamp = Math.floor(Date.now()/1000);
         var obj = new MongoId(0x123456);
@@ -116,6 +192,13 @@ module.exports.MongoId_class = {
         test.ok(hash.timestamp === timestamp || hash.timestamp === timestamp+1);
         test.equal(hash.pid, process.pid);
         test.done();
+    },
+
+    testShouldParseNonString: function(t) {
+        // TODO: should throw, not coerce (but is a breaking change)
+        var hash = MongoId.parse(0x12345678);
+        t.equal(hash.timestamp, parseInt(("" + 0x12345678).slice(0, 8), 16));
+        t.done();
     },
 
     testIdShouldContainParsedParts: function(test) {
