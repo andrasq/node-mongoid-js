@@ -151,7 +151,8 @@ module.exports.MongoId_class = {
 
     'id should include pid': function(t) {
         var id = new MongoId().toString();
-        t.ok(id.indexOf(process.pid.toString(16)) == 14);
+        var pid = process.pid.toString(16);
+        t.ok(id.indexOf(pid) == 14 + 4 - pid.length);
         t.done();
     },
 

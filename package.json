@@ -1,6 +1,6 @@
 {
   "name": "mongoid-js",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "very fast mongoid compatible unique ids",
   "license": "Apache-2.0",
   "main": "mongoid.js",
@@ -16,7 +16,7 @@
     "node": ">=0.0.0"
   },
   "scripts": {
-    "test": "nodeunit"
+    "test": "qnit"
   },
   "keywords": [
     "Andras",
