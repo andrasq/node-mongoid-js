@@ -1,6 +1,9 @@
 mongoid-js
 ==========
 
+[![Build status](https://travis-ci.org/andrasq/node-mongoid-js.svg?branch=master)](https://travis-ci.org/andrasq/node-mongoid-js?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/andrasq/node-mongoid-js/badge.svg?branch=master)](https://coveralls.io/github/andrasq/node-mongoid-js?branch=master)
+
 very very fast MongoID compatible unique id generator
 
 Generates unique ids.  The ids are constructed like MongoDB document ids,
