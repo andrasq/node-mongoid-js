@@ -107,6 +107,7 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 Change Log
 ----------
 
+- 1.1.2 - put under travis ci tests, add coverage,  move `qnit` dev dependency into .travis.yml
 - 1.1.1 - fix test with qnit, fix unit test pid < 0x1000, add .travis.yml
 - 1.1.0 - tentative `browserify` support: use a random pid if process.pid is not set, avoid object methods in constructor, 100% unit test coverage
 - 1.0.7 - fix getTimestamp and quantize correctly, deprecate index.js, test with qnit, fix sequence wrapping
