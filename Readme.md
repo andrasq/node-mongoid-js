@@ -15,12 +15,6 @@ to be unique across a cluster of up to 16 million (2^24) servers.
 Uniqueness is guaranteed by unique {server, process} id pairs.
 
 
-## Installation
-
-        npm install mongoid-js
-        npm test mongoid-js
-
-
 ## Summary
 
         var mongoid = require('mongoid-js');
