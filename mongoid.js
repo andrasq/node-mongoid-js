@@ -109,7 +109,12 @@ MongoId.prototype.mongoid = MongoId.prototype.fetch;
 var _zeroPadding = ["", "0", "00", "000", "0000", "00000", "000000", "0000000"];
 function hexFormat(n, width) {
     var s = n.toString(16);
-    return _zeroPadding[width - s.length] + s;
+    var paddingNeeded = width - s.length;
+    if (paddingNeeded > 0) {
+        return _zeroPadding[width - s.length] + s;
+    } else {
+        return s.substr(0, width);
+    }
 }
 MongoId.prototype.hexFormat = hexFormat;
 

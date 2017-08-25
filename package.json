@@ -29,8 +29,8 @@
     "unique",
     "ids"
   ],
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
+    "qnit": "^0.18.0"
   }
 }
