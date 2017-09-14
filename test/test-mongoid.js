@@ -93,6 +93,19 @@ module.exports.mongoid_function = {
 };
 
 module.exports.MongoId_class = {
+    setUp: function(done) {
+        // process.pid is write-protected by default, make it writable
+        this._processPid = process.pid;
+        delete process.pid;
+        process.pid = this._processPid;
+        done();
+    },
+
+    tearDown: function(done) {
+        process.pid = this._processPid;
+        done();
+    },
+
     testShouldReturnObject: function(test) {
         var obj = new MongoId(0x123);
         test.ok(typeof obj == 'object');
@@ -150,19 +163,27 @@ module.exports.MongoId_class = {
     },
 
     'id should include pid': function(t) {
+        process.pid = 0x1234;
         var id = new MongoId().toString();
-        var pid = process.pid.toString(16);
-        t.ok(id.indexOf(pid) == 14 + 4 - pid.length);
+        mongoid.pid = null;
+        t.ok(id.indexOf("1234", 14) === 14);
+        t.done();
+    },
+
+    'id should use 16 low bits of pid': function(t) {
+        process.pid = 0x12345;
+        // specify a system id that will not have a trailing hex "1"
+        var id = new MongoId(0xF00000).toString();
+        t.ok(id.indexOf("12345", 13) < 0);
+        t.ok(id.indexOf("2345", 14) === 14);
         t.done();
     },
 
     'id should include a random pid if process.pid is not set': function(t) {
-        var processPid = process.pid;
         delete process.pid;
         var id = new MongoId().toString();
         var pid = parseInt(id.slice(14, 18), 16);
         t.ok(pid >= 10000 && pid <= 32767);
-        process.pid = processPid;
         t.done();
     },
 
@@ -185,6 +206,7 @@ module.exports.MongoId_class = {
     },
 
     testShouldParseId: function(test) {
+        process.pid = 0x4567;
         var timestamp = Math.floor(Date.now()/1000);
         var obj = new MongoId(0x123456);
         var hash = obj.parse(obj.toString());

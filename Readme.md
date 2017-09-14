@@ -14,11 +14,21 @@ The ids are guaranteed unique on any one server, and can be configured
 to be unique across a cluster of up to 16 million (2^24) servers.
 Uniqueness is guaranteed by unique {server, process} id pairs.
 
+The uniqueness guarantee requires that process ids be no more than 16 bits
+(`kernel.pid_max` must be configured to 65535 or less on linux).
+
+The 24-byte id is constructed by concatenating the hex values of
+- 32 bit count of seconds elapsed since 1970-01-01 00:00:00 GMT
+- 24 bit caller provided system id, else a 24-bit random value
+- 16 bits of the process id (high bits above 16 are ignored)
+- 24 bit monotinically increasing sequence number
+
 
 ## Summary
 
         var mongoid = require('mongoid-js');
-        var id = mondoid();             // => 543f376340e2816497000001
+        var id = mongoid();             // => 543f376340e2816497000001
+        var id2 = mongoid();            // => 543f376340e2816497000002
 
         var MongoId = require('mongoid-js').MongoId;
         var idFactory = new MongoId(/*systemId:*/ 0x123);
@@ -38,9 +48,9 @@ to mongoid() in this process will fetch ids from this singleton.
         var id1 = mongoid();            // => 543f376340e2816497000001
         var id2 = mongoid();            // => 543f376340e2816497000002
 
-### MongoId( systemId )
+### new MongoId( [systemId] )
 
-unique id factory that embeds the given system id in each generated unique id.
+Create an id factory that embeds the given system id in each generated unique id.
 By a systematic assignment of system ids to servers, this approach can guarantee
 globally unique ids (ie, globally for an installation).
 
@@ -50,6 +60,8 @@ The systemId must be an integer between 0 and 16777215 (0xFFFFFF), inclusive.
         var MongoId = require('mongoid-js').MongoId;
         var systemId = 4656;
         var idFactory = new MongoId(systemId);
+
+### Instance Methods
 
 #### id.fetch( )
 
@@ -74,7 +86,8 @@ same as MongoId.getTimestamp(id.toString()), see below
 
 each MongoId object itself can have a distinct unique id, created on demand
 when toString() is called.  The object invokes itself as an id factory and
-fetches for itself the next id in the sequence.  The
+fetches for itself the next id in the sequence.  The fetched id is saved and
+reused the next time `toString()` is called.
 
 ### Class Methods
 
@@ -104,6 +117,8 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 Change Log
 ----------
 
+- 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
+  change unit tests to work on systems with longer than 16 bit process ids
 - 1.1.2 - put under travis ci tests, add coverage,  move `qnit` dev dependency into .travis.yml
 - 1.1.1 - fix test with qnit, fix unit test pid < 0x1000, add .travis.yml
 - 1.1.0 - tentative `browserify` support: use a random pid if process.pid is not set, avoid object methods in constructor, 100% unit test coverage
