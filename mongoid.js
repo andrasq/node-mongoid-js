@@ -52,7 +52,7 @@ function MongoId( machineId ) {
 
     // if process.pid not available, use a random 2-byte number between 10k and 30k
     // suggestions for better browserify support from @cordovapolymer at github
-    var processId = process.pid || 10000 + Math.floor(Math.random() * 20000);
+    var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
 
     this.processIdStr = hexFormat(machineId, 6) + hexFormat(processId, 4);
     this.sequenceId = 0;
@@ -86,7 +86,7 @@ _getTimestamp = MongoId.prototype._getTimestamp = timestampCache[0];
 _getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 
 var _hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
-MongoId.prototype.fetch = function() {
+MongoId.prototype.fetch = function fetch() {
     this.sequenceId += 1;
     if (this.sequenceId >= 0x1000000) {
         // sequence wrapped, we can make an id only if the timestamp advanced
@@ -114,11 +114,11 @@ function hexFormat(n, width) {
 MongoId.prototype.hexFormat = hexFormat;
 
 // each MongoId object also evaluates to a per-object id string
-MongoId.prototype.toString = function( ) {
+MongoId.prototype.toString = function toString( ) {
     return this.id ? this.id : this.id = this.fetch();
 };
 
-MongoId.parse = function( idstring ) {
+MongoId.parse = function parse( idstring ) {
     // TODO: should throw an Error not coerce, but is a breaking change
     if (typeof idstring !== 'string') idstring = "" + idstring;
     return {
@@ -129,16 +129,18 @@ MongoId.parse = function( idstring ) {
     };
 };
 // make the class method available as an instance method too
-MongoId.prototype.parse = function( idstring ) {
+MongoId.prototype.parse = function parse( idstring ) {
     return MongoId.parse(this.toString());
 };
 
 // return the javascript timestamp (milliseconds) embedded in the id.
 // Note that the ids embed unix timestamps (seconds precision).
-MongoId.getTimestamp = function( idstring ) {
+MongoId.getTimestamp = function getTimestamp( idstring ) {
     return parseInt(idstring.slice(0, 8), 16) * 1000;
 };
-MongoId.prototype.getTimestamp = function( ) {
+MongoId.prototype.getTimestamp = function getTimestamp( ) {
     return MongoId.getTimestamp(this.toString());
 };
 
+// accelerate method access
+MongoId.prototype = MongoId.prototype;
