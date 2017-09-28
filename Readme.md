@@ -58,6 +58,7 @@ By a systematic assignment of system ids to servers, this approach can guarantee
 globally unique ids (ie, globally for an installation).
 
 The systemId must be an integer between 0 and 16777215 (0xFFFFFF), inclusive.
+If no system id is specified, a random 24-bit integer is used.
 
     // ids with a unique system id (here 0xbaabaa)
     var MongoId = require('mongoid-js').MongoId;
@@ -112,8 +113,8 @@ assign one.  The assigned id is reused the next time it a factory id is needed.
 
 Decompose the id string into its parts -- unix timestamp, machine id,
 process id and sequence number.  Unix timestamps are seconds since the
-start of the epoch (1970-01-01 GMT).  Note that parse() returns seconds,
-while getTimestamp() returns milliseconds.
+start of the epoch (1970-01-01 GMT).  Note that `parse()` returns seconds,
+while `getTimestamp()` returns milliseconds.
 
     var parts = MongoId.parse("543f376340e2816497000013");
     // => { timestamp: 1413429091,      // 0x543f3763
