@@ -7,10 +7,13 @@ node_js:
   - 7
   - 8
   - 9
+  - 10
+  - 11
 install:
   - npm install .
   - npm install -g qnit
 after_success:
+  - if [ `node -p 'process.version.slice(0, 3)'` != "v8." ]; then exit; fi
   - npm install -g nyc@8.4.0
   - npm install -g codecov
   - nyc --reporter lcov npm test && codecov
