@@ -131,9 +131,27 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
     MongoId.getTimestamp("543f376340e2816497000013");
     // => 1413429091000
 
+### MongoId.shorten( idString )
+
+Convert the hexadecimal mongoid to a more compact string.  The conversion is lossless.
+The converted strings sort into the same respective alpha order as in hexadecimal form, and
+are safe to use in URLs.  The converted character set is '-', `0-9`, `A-Z`, `_`, and `a-z`,
+in that order (in increasing ASCII order).
+
+### MongoId.unshorten( shortIdString )
+
+Convert the shortened mongoid string back to its hexadecimal form.
+
+    MongoId.shorten("543f376340e2816497000013");
+    // => "K2wrNo2XVLHM---I"
+
+    MongoId.unshorten("K2wrNo2XVLHM---I");
+    // => "543f376340e2816497000013"
+
 
 ## Change Log
 
+- 1.2.0 - new static methods `shorten` and `unshorten`
 - 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
   change unit tests to work on systems with longer than 16 bit process ids
 - 1.1.2 - put under travis ci tests, add coverage,  move `qnit` dev dependency into .travis.yml
