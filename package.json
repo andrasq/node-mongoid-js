@@ -1,7 +1,7 @@
 {
   "name": "mongoid-js",
   "version": "1.2.0",
-  "description": "very fast mongoid compatible unique ids",
+  "description": "very fast mongoid compatible unique string ids",
   "license": "Apache-2.0",
   "main": "mongoid.js",
   "author": {
