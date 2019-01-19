@@ -134,12 +134,15 @@ module.exports.MongoId_class = {
         test.done();
     },
 
-    'should throw Error if wrapped in same second': function(t) {
+    'should block until next second if wrapped in same second': function(t) {
         factory = new MongoId(0x111111);
+        var id1 = factory.fetch();
         factory.sequenceId = 0xffffff;
         factory.sequencePrefix = "fffff";
         // note: race condition: this test will fail if the seconds increase before the fetch
-        t.throws(function(){ factory.fetch() }, 'should throw');
+        //t.throws(function(){ factory.fetch() }, 'should throw');
+        var id2 = factory.fetch();
+        t.equal(MongoId.parse(id2).timestamp, MongoId.parse(id1).timestamp + 1);
         t.done();
     },
 

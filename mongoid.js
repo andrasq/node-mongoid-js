@@ -65,8 +65,9 @@ var timestampCache = (function() {
     var _timestamp;
     var _timestampStr;
     var _ncalls = 0;
+    var _timeout = null;
     function getTimestamp( ) {
-        if (!_timestamp) getTimestampStr();
+        if (!_timestamp || ++_ncalls > 1000) getTimestampStr();
         return _timestamp;
     }
     function getTimestampStr( ) {
@@ -74,7 +75,9 @@ var timestampCache = (function() {
             _ncalls = 0;
             _timestamp = Date.now();
             var msToNextTimestamp = 1000 - _timestamp % 1000;
-            setTimeout(function(){ _timestamp = null; }, Math.min(msToNextTimestamp - 1, 100));
+            if (_timeout) { clearTimeout(_timeout); _timeout = null }
+            // reuse the timestamp for up to 100 ms, then get a new one
+            _timeout = setTimeout(function(){ _timeout = _timestamp = null; }, Math.min(msToNextTimestamp - 1, 100));
             _timestamp -= _timestamp % 1000;
             _timestampStr = hexFormat(_timestamp/1000, 8);
         }
@@ -90,11 +93,11 @@ MongoId.prototype.fetch = function fetch() {
     this.sequenceId += 1;
     if (this.sequenceId >= 0x1000000) {
         // sequence wrapped, we can make an id only if the timestamp advanced
-        var _timestamp = this._getTimestamp();
-        if (_timestamp === this.sequenceStartTimestamp) {
-            // TODO: find a more elegant way to deal with overflow
-            throw new Error("mongoid sequence overflow: more than 16 million ids generated in 1 second");
-        }
+        // Busy-wait until the next second so we can restart the sequence.
+        do {
+            // TODO: emit or log a warning so can adjust generator
+            var _timestamp = this._getTimestamp();
+        } while (_timestamp === this.sequenceStartTimestamp);
         this.sequenceId = 0;
         this.sequenceStartTimestamp = _timestamp;
     }
