@@ -14,6 +14,6 @@ install:
   - npm install -g qnit
 after_success:
   - if [ `node -p 'process.version.slice(0, 3)'` != "v8." ]; then exit; fi
-  - npm install -g nyc@8.4.0
-  - npm install -g codecov
-  - nyc --reporter lcov npm test && codecov
+  - npm install -g nyc codecov coveralls
+  - nyc -r text --reporter lcov npm test && codecov
+  - nyc report -r text-lcov | coveralls
