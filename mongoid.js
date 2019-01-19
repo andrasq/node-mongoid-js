@@ -142,5 +142,53 @@ MongoId.prototype.getTimestamp = function getTimestamp( ) {
     return MongoId.getTimestamp(this.toString());
 };
 
+// candidates for shortchars were: *,.-/^_|~  We use - and _
+// shortid charset, 0..63:
+var shortCharset = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+var shortCharvals = [];
+for (var i=0; i<64; i++) shortCharvals[shortCharset.charCodeAt(i)] = i;
+
+var hexchars = '0123456789abcdef';              // offset into string faster than lookup
+var hexCharvals = [];                           // lookup faster than if-else test
+for (var i=0; i<10; i++) hexCharvals[0x30 + i] = i;
+for (var i=0; i<6; i++) hexCharvals[0x41 + i] = i + 10;
+for (var i=0; i<6; i++) hexCharvals[0x61 + i] = i + 10;
+
+// convert hexid string to shortid
+MongoId.shorten = function shorten( mongoid ) {
+    var bits, shortid = '';
+    var chars = new Array();
+    for (var ix=0; ix<24; ix+=6) {
+        bits =
+            (hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
+            (hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
+            (hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
+        shortid +=
+            shortCharset[(bits >>> 18) & 0x3F] +
+            shortCharset[(bits >>> 12) & 0x3F] +
+            shortCharset[(bits >>>  6) & 0x3F] +
+            shortCharset[(bits >>>  0) & 0x3F];
+    }
+    return shortid;
+}
+
+// convert shortid string to hex
+MongoId.unshorten = function unshorten( shortid ) {
+    var bits, hexid = '';
+    for (var ix=0; ix<16; ix+=4) {
+        var bits =
+            (shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
+            (shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
+            (shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
+            (shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
+        hexid +=
+            hexchars[(bits >>> 20) & 0xF] + hexchars[(bits >>> 16) & 0xF] +
+            hexchars[(bits >>> 12) & 0xF] + hexchars[(bits >>>  8) & 0xF] +
+            hexchars[(bits >>>  4) & 0xF] + hexchars[(bits >>>  0) & 0xF];
+    }
+    return hexid;
+}
+
 // accelerate method access
-MongoId.prototype = MongoId.prototype;
+MongoId.prototype = toStruct(MongoId.prototype);
+function toStruct(hash) { return toStruct.prototype = hash }

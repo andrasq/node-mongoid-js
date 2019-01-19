@@ -260,4 +260,34 @@ module.exports.MongoId_class = {
         testUnique(test, ids);
         test.done();
     },
+
+    'should shorten ids': function(t) {
+        t.equal(MongoId.shorten("000000000000000000000000"), '----------------');
+        t.equal(MongoId.shorten("111111111111111111111111"), '3G3G3G3G3G3G3G3G');
+        t.equal(MongoId.shorten("222222222222222222222222"), '7X7X7X7X7X7X7X7X');
+        t.equal(MongoId.shorten("444444444444444444444444"), 'G3G3G3G3G3G3G3G3');
+        t.equal(MongoId.shorten("888888888888888888888888"), 'X7X7X7X7X7X7X7X7');
+        t.equal(MongoId.shorten("aaaaaaaaaaaaAAAAAAAAAAAA"), 'eeeeeeeeeeeeeeee');
+        t.equal(MongoId.shorten("cccccccccccccccccccccccc"), 'nBnBnBnBnBnBnBnB');
+        t.equal(MongoId.shorten("ffffffffffffFFFFFFFFFFFF"), 'zzzzzzzzzzzzzzzz');
+        t.done();
+    },
+
+    'shortened ids should be in alpha sort order': function(t) {
+        if (process.env.NODE_COVERAGE === 'Y') t.skip();
+        var ids = [], ids2 = [];
+        for (var i=0; i<66000; i++) ids[i] = ids2[i] = MongoId.shorten(MongoId());
+        t.deepEqual(ids, ids2.sort());
+        t.done();
+    },
+
+
+    'unshorten should undo shorten': function(t) {
+        for (var i=0; i<66000; i++) {
+            var id = MongoId();
+            var short = MongoId.shorten(id);
+            t.equal(MongoId.unshorten(short), id);
+        }
+        t.done();
+    },
 }
