@@ -134,7 +134,7 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 
 Convert the hexadecimal mongoid to a more compact string.  The conversion is lossless.
 The converted strings sort into the same respective alpha order as in hexadecimal form, and
-are safe to use in URLs.  The converted character set is '-', `0-9`, `A-Z`, `_`, and `a-z`,
+are safe to use in URLs.  The converted character set is `-`, `0-9`, `A-Z`, `_`, and `a-z`,
 in that order (in increasing ASCII order).
 
 ### MongoId.unshorten( shortIdString )
