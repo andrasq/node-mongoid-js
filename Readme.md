@@ -78,7 +78,7 @@ Id factories should all have unique system ids, else they may not generate uniqu
 
 generate and return the next id in the sequence.  Up to 16 million distinct
 ids (16777216) can be fetched during the same wallclock second; trying to
-fetch more throws an error.  The second starts when the clock reads _*000_
+fetch more blocks until the next second.  The second starts when the clock reads _*000_
 milliseconds, not when the first id is fetched.  The second ends 1000
 milliseconds after the start, when the clock next reads _*000_ milliseconds.
 
