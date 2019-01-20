@@ -290,7 +290,7 @@ module.exports.MongoId_class = {
 
 
     'unshorten should undo shorten': function(t) {
-        for (var i=0; i<66000; i++) {
+        for (var i=0; i<100000; i++) {
             var id = MongoId();
             var short = MongoId.shorten(id);
             t.equal(MongoId.unshorten(short), id);
