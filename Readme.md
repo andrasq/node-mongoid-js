@@ -134,8 +134,7 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 
 Convert the hexadecimal mongoid to a more compact string.  The conversion is lossless.
 The converted strings sort into the same respective alpha order as in hexadecimal form, and
-are safe to use in URLs.  The converted character set is `-`, `0-9`, `A-Z`, `_`, and `a-z`,
-in that order (in increasing ASCII order).
+are safe to use in URLs.
 
 ### MongoId.unshorten( shortIdString )
 
@@ -146,6 +145,14 @@ Convert the shortened mongoid string back to its hexadecimal form.
 
     MongoId.unshorten("K2wrNo2XVLHM---I");
     // => "543f376340e2816497000013"
+
+### MongoId.setShortCharset( charset )
+
+Redefine the shortid character set.  `charset` is expected to be a string of 64 characters.
+The default character set is `-`, `0-9`, `A-Z`, `_`, and `a-z`, in that order (ASCII order).
+The character set `'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'` would
+produce base64 shortids (which wouldn't sort into timestamp and sequence order, but would be
+base64).
 
 
 ## Change Log

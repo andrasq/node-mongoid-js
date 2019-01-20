@@ -145,17 +145,22 @@ MongoId.prototype.getTimestamp = function getTimestamp( ) {
     return MongoId.getTimestamp(this.toString());
 };
 
-// candidates for shortchars were: *,.-/^_|~  We use - and _
-// shortid charset, 0..63:
-var shortCharset = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
-var shortCharvals = [];
-for (var i=0; i<64; i++) shortCharvals[shortCharset.charCodeAt(i)] = i;
-
 var hexchars = '0123456789abcdef';              // offset into string faster than lookup
 var hexCharvals = [];                           // lookup faster than if-else test
 for (var i=0; i<10; i++) hexCharvals[0x30 + i] = i;
 for (var i=0; i<6; i++) hexCharvals[0x41 + i] = i + 10;
 for (var i=0; i<6; i++) hexCharvals[0x61 + i] = i + 10;
+
+// candidates for shortchars were: *,.-/^_|~  We use - and _
+MongoId.shortCharset = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+MongoId.shortCharvals = [];
+
+MongoId.setShortCharset = function setShortCharset( chars ) {
+    if (chars.length !== 64) throw new Error('short charset must be 64 characters');
+    for (var i=0; i<64; i++) if (chars.charCodeAt(i) > 127) throw new Error('short charset must be 7-bit ASCII');
+    MongoId.shortCharset = chars;
+    for (var i=0; i<64; i++) MongoId.shortCharvals[MongoId.shortCharset.charCodeAt(i)] = i;
+}
 
 // convert hexid string to shortid
 MongoId.shorten = function shorten( mongoid ) {
@@ -167,10 +172,10 @@ MongoId.shorten = function shorten( mongoid ) {
             (hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
             (hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
         shortid +=
-            shortCharset[(bits >>> 18) & 0x3F] +
-            shortCharset[(bits >>> 12) & 0x3F] +
-            shortCharset[(bits >>>  6) & 0x3F] +
-            shortCharset[(bits >>>  0) & 0x3F];
+            MongoId.shortCharset[(bits >>> 18) & 0x3F] +
+            MongoId.shortCharset[(bits >>> 12) & 0x3F] +
+            MongoId.shortCharset[(bits >>>  6) & 0x3F] +
+            MongoId.shortCharset[(bits >>>  0) & 0x3F];
     }
     return shortid;
 }
@@ -180,10 +185,10 @@ MongoId.unshorten = function unshorten( shortid ) {
     var bits, hexid = '';
     for (var ix=0; ix<16; ix+=4) {
         var bits =
-            (shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
-            (shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
-            (shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
-            (shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
+            (MongoId.shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
+            (MongoId.shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
+            (MongoId.shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
+            (MongoId.shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
         hexid +=
             hexchars[(bits >>> 20) & 0xF] + hexchars[(bits >>> 16) & 0xF] +
             hexchars[(bits >>> 12) & 0xF] + hexchars[(bits >>>  8) & 0xF] +
@@ -191,6 +196,9 @@ MongoId.unshorten = function unshorten( shortid ) {
     }
     return hexid;
 }
+
+// install defaults
+MongoId.setShortCharset('-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz');
 
 // accelerate method access
 MongoId.prototype = toStruct(MongoId.prototype);

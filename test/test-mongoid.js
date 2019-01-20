@@ -276,11 +276,15 @@ module.exports.MongoId_class = {
         t.done();
     },
 
-    'shortened ids should be in alpha sort order': function(t) {
+    'shortened ids should be in increasing alpha sort order': function(t) {
         if (process.env.NODE_COVERAGE === 'Y') t.skip();
         var ids = [], ids2 = [];
-        for (var i=0; i<66000; i++) ids[i] = ids2[i] = MongoId.shorten(MongoId());
-        t.deepEqual(ids, ids2.sort());
+        last = '';
+        for (var i=0; i<100000; i++) {
+            var id = MongoId.shorten(MongoId());
+            t.ok(id > last);
+            last = id;
+        }
         t.done();
     },
 
@@ -291,6 +295,17 @@ module.exports.MongoId_class = {
             var short = MongoId.shorten(id);
             t.equal(MongoId.unshorten(short), id);
         }
+        t.done();
+    },
+
+    'should set charset': function(t) {
+        t.throws(function() { MongoId.setShortCharset('abc') }, /64/);
+        t.throws(function() { MongoId.setShortCharset('a\u1234cdefghefghefghaxcdefghefghefghaxcdefghefghefghaxcdefghefghefgh') }, /ascii/i);
+
+        var base64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        MongoId.setShortCharset(base64chars);
+        t.equal(MongoId.shortCharset, base64chars);
+
         t.done();
     },
 }
