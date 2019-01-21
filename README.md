@@ -19,7 +19,7 @@ an id string will compare as `<` less than any id string generated after it.
 The uniqueness guarantee requires that process ids be no more than 16 bits
 (`kernel.pid_max` must be configured to 65535 or less on linux).
 
-The 24-byte id string is constructed by concatenating the big-endian hex values of
+The 24-char id string is constructed by concatenating the big-endian hex values of
 - 32 bit count of seconds elapsed since 1970-01-01 00:00:00 GMT
 - 24 bit caller provided system id, else a 24-bit random value
 - 16 bits of the process id (high bits above 16 are ignored)
