@@ -306,6 +306,14 @@ module.exports.MongoId_class = {
         MongoId.setShortCharset(base64chars);
         t.equal(MongoId.shortCharset, base64chars);
 
+        var buf = new Buffer(12);
+        for (var i=0; i<100000; i++) {
+            var id = MongoId();
+            buf.write(id, 'hex');
+            t.equal(MongoId.shorten(id), buf.toString('base64'));
+            t.equal(MongoId.unshorten(MongoId.shorten(id)), id);
+        }
+
         t.done();
     },
 }
