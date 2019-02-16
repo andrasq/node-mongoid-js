@@ -66,6 +66,9 @@ var timestampCache = (function() {
     var _timestampStr;
     var _ncalls = 0;
     var _timeout = null;
+    function expireTimestamp() {
+        _timeout = _timestamp = null;
+    }
     function getTimestamp( ) {
         if (!_timestamp || ++_ncalls > 1000) getTimestampStr();
         return _timestamp;
@@ -77,7 +80,7 @@ var timestampCache = (function() {
             var msToNextTimestamp = 1000 - _timestamp % 1000;
             if (_timeout) { clearTimeout(_timeout); _timeout = null }
             // reuse the timestamp for up to 100 ms, then get a new one
-            _timeout = setTimeout(function(){ _timeout = _timestamp = null; }, Math.min(msToNextTimestamp - 1, 100));
+            _timeout = setTimeout(expireTimestamp, Math.min(msToNextTimestamp - 1, 100));
             _timestamp -= _timestamp % 1000;
             _timestampStr = hexFormat(_timestamp/1000, 8);
         }
@@ -112,7 +115,7 @@ MongoId.prototype.mongoid = MongoId.prototype.fetch;
 var _zeroPadding = ["", "0", "00", "000", "0000", "00000", "000000", "0000000"];
 function hexFormat(n, width) {
     var s = n.toString(16);
-    return _zeroPadding[width - s.length] + s;
+    return s.length >= width ? s : _zeroPadding[width - s.length] + s;
 }
 MongoId.prototype.hexFormat = hexFormat;
 
@@ -153,13 +156,15 @@ for (var i=0; i<6; i++) hexCharvals[0x61 + i] = i + 10;
 
 // candidates for shortchars were: *,.-/^_|~  We use - and _
 MongoId.shortCharset = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
-MongoId.shortCharvals = [];
+MongoId.shortCharvals = new Array(64);
+MongoId.shortDigits = new Array(64);
 
 MongoId.setShortCharset = function setShortCharset( chars ) {
     if (chars.length !== 64) throw new Error('short charset must be 64 characters');
     for (var i=0; i<64; i++) if (chars.charCodeAt(i) > 127) throw new Error('short charset must be 7-bit ASCII');
     MongoId.shortCharset = chars;
     for (var i=0; i<64; i++) MongoId.shortCharvals[MongoId.shortCharset.charCodeAt(i)] = i;
+    for (var i=0; i<64; i++) MongoId.shortDigits[i] = MongoId.shortCharset[i];
 }
 
 // convert hexid string to shortid
@@ -172,10 +177,12 @@ MongoId.shorten = function shorten( mongoid ) {
             (hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
             (hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
         shortid +=
-            MongoId.shortCharset[(bits >>> 18) & 0x3F] +
-            MongoId.shortCharset[(bits >>> 12) & 0x3F] +
-            MongoId.shortCharset[(bits >>>  6) & 0x3F] +
-            MongoId.shortCharset[(bits >>>  0) & 0x3F];
+            MongoId.shortDigits[(bits >>> 18) & 0x3F] +
+            MongoId.shortDigits[(bits >>> 12) & 0x3F] +
+            MongoId.shortDigits[(bits >>>  6) & 0x3F] +
+            MongoId.shortDigits[(bits >>>  0) & 0x3F];
+            // node-v6 is 125% faster using an array of digit strings, node-v8 is 15% faster with the charset string,
+            // node-v9 is 10% faster using digits, node-v11 is 30% faster using digits
     }
     return shortid;
 }
@@ -193,6 +200,7 @@ MongoId.unshorten = function unshorten( shortid ) {
             hexchars[(bits >>> 20) & 0xF] + hexchars[(bits >>> 16) & 0xF] +
             hexchars[(bits >>> 12) & 0xF] + hexchars[(bits >>>  8) & 0xF] +
             hexchars[(bits >>>  4) & 0xF] + hexchars[(bits >>>  0) & 0xF];
+        // custom hex formatting here is 3x faster than hexFormat()
     }
     return hexid;
 }
