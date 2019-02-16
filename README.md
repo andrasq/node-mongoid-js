@@ -86,10 +86,12 @@ milliseconds after the start, when the clock next reads _*000_ milliseconds.
     var id1 = ids.fetch();              // => "543f3789001230649f000001"
     var id2 = ids.fetch();              // => "543f3789001230649f000002"
 
-#### ids.parse( )
 
-Parse the factory id string.  If the factory does not yet have an id string, assign one.
-Same as `MongoId.parse(id.toString())`, see below.
+#### ids.parse( [idString] )
+
+With no `idString`, parse the factory's (id object's) built-in id.  If the factory does not
+yet have an id string, assign one.  Same as `MongoId.parse(id.toString())`, see below.  If
+`idString` is provided, parse it just like `MongoId.parse`.
 
 #### ids.getTimestamp( )
 
@@ -148,16 +150,17 @@ Convert the shortened mongoid string back to its hexadecimal form.
 
 ### MongoId.setShortCharset( charset )
 
-Redefine the shortid character set.  `charset` is expected to be a string of 64 characters.
+Redefine the shortid character set.  `charset` is expected to be a string of 64 7-bit ASCII characters.
 The default character set is `-`, `0-9`, `A-Z`, `_`, and `a-z`, in that order (ASCII order).
 The character set `'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'` would
 produce base64 shortids (which wouldn't sort into timestamp and sequence order, but would be
-base64).
+base64).  Note that this changes the shortid charset globally, for all MongoId instances.
 
 
 ## Change Log
 
-- 1.2.0 - new static methods `shorten` and `unshorten`, block until next second if out of ids (do not throw)
+- 1.2.0 - new static methods `shorten` and `unshorten`, block until next second if out of ids (do not throw),
+          optional idString to id.parse()
 - 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
   change unit tests to work on systems with longer than 16 bit process ids
 - 1.1.2 - put under travis ci tests, add coverage,  move `qnit` dev dependency into .travis.yml

@@ -135,6 +135,7 @@ module.exports.MongoId_class = {
     },
 
     'should block until next second if wrapped in same second': function(t) {
+        if (process.env.NODE_COVERAGE === 'Y') t.skip();
         factory = new MongoId(0x111111);
         var id1 = factory.fetch();
         factory.sequenceId = 0xffffff;
@@ -208,6 +209,18 @@ module.exports.MongoId_class = {
         }, 100 + 5);
     },
 
+    testFactoryShouldParseId: function(t) {
+        var ids = new MongoId();
+        var id1 = ids.fetch();
+        var id = ids.toString();                        // id of the ids object, the factory id
+        var id3 = ids.fetch();
+        t.equal(ids.toString(), id);                    // same each time
+        t.deepEqual(ids.parse(), ids.parse(id));        // parse own id by default
+        t.ok(id1 < id);                                 // own id not first
+        t.ok(id < id3);                                 // own id not next
+        t.done();
+    },
+
     testShouldParseId: function(test) {
         process.pid = 0x4567;
         var timestamp = Math.floor(Date.now()/1000);
@@ -277,12 +290,11 @@ module.exports.MongoId_class = {
     },
 
     'shortened ids should be in increasing alpha sort order': function(t) {
-        if (process.env.NODE_COVERAGE === 'Y') t.skip();
         var ids = [], ids2 = [];
         last = '';
         for (var i=0; i<100000; i++) {
             var id = MongoId.shorten(MongoId());
-            t.ok(id > last);
+            t.ok(id > last, "out of order");
             last = id;
         }
         t.done();
