@@ -1,7 +1,7 @@
 'use stricf';
 
-var mongoid = require('../mongoid');
-var MongoId = require('../mongoid').MongoId;
+var mongoid = require('../');
+var MongoId = require('../').MongoId;
 
 function uniqid() {
     return Math.floor(Math.random() * 0x1000000);
@@ -46,7 +46,7 @@ module.exports.require = {
         },
 
         testShouldBeUsableAsFunction: function(test) {
-            var mongoid = require('../mongoid');
+            var mongoid = require('../');
             test.ok(typeof mongoid === 'function');
             test.ok(typeof mongoid() === 'string');
             test.done();

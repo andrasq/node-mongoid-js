@@ -52,6 +52,7 @@ var _shortCharvals = new Array(128);
 var _shortDigits = new Array(64);
 setCharset('-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz', 64, _shortCharvals, _shortDigits);
 
+
 function MongoId( machineId ) {
     // if called as a function, return an id from the singleton
     if (this === global || !this) return mongoid();
@@ -65,7 +66,7 @@ function MongoId( machineId ) {
     // suggestions for better browserify support from @cordovapolymer at github
     var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
 
-    this.processIdStr = hexFormat(machineId, 6) + hexFormat(processId, 4);
+    this.processIdStr = _hexFormat6(machineId) + _hexFormat4(processId);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
     this.id = null;
@@ -93,7 +94,7 @@ var timestampCache = (function() {
             // reuse the timestamp for up to 100 ms, then get a new one
             _timeout = setTimeout(expireTimestamp, Math.min(msToNextTimestamp - 1, 100));
             _timestamp -= _timestamp % 1000;
-            _timestampStr = hexFormat(_timestamp/1000, 8);
+            _timestampStr = _hexFormat8(_timestamp/1000);
         }
         return _timestampStr;
     }
@@ -116,16 +117,29 @@ MongoId.prototype.fetch = function fetch() {
     }
 
     if ((this.sequenceId & 0xF) === 0) {
-        this.sequencePrefix = hexFormat((this.sequenceId >>> 4).toString(16), 5);
+        this.sequencePrefix = _hexFormat4(this.sequenceId >>> 4) + _hexDigits[this.sequenceId & 0xF];
     }
     return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
 
+// typeset the 8, 6 and 4 least significant hex digits from the number
+function _hexFormat8( n ) {
+    return _hexDigits[(n >>> 28) & 0xF] + _hexDigits[(n >>> 24) & 0xF] + _hexFormat6(n);
+}
+function _hexFormat6( n ) {
+    return _hexDigits[(n >>> 20) & 0xF] + _hexDigits[(n >>> 16) & 0xF] + _hexFormat4(n);
+}
+function _hexFormat4( n ) {
+    return _hexDigits[(n >>> 12) & 0xF] + _hexDigits[(n >>>  8) & 0xF] +
+           _hexDigits[(n >>>  4) & 0xF] + _hexDigits[(n       ) & 0xF];
+}
+
+// legacy hexFormat, not used but part of the prototype
 var _zeroPadding = ["", "0", "00", "000", "0000", "00000", "000000", "0000000"];
-function hexFormat(n, width) {
+function hexFormat( n, width ) {
     var s = n.toString(16);
-    return s.length >= width ? s : _zeroPadding[width - s.length] + s;
+    return _zeroPadding[width - s.length] + s;
 }
 MongoId.prototype.hexFormat = hexFormat;
 
@@ -176,6 +190,18 @@ function setCharset( chars, len, charvals, digits ) {
     }
 }
 
+// typeset the 4 and 3 least significant base64url digits
+function _shortFormat4( n ) {
+    return _shortFormat3(n >>> 6) + _shortDigits[n & 0x3F];
+}
+function _shortFormat3( n ) {
+    return _shortDigits[(n >>> 12) & 0x3F] +
+           _shortDigits[(n >>>  6) & 0x3F] +
+           _shortDigits[(n       ) & 0x3F];
+    // node-v6 is 125% faster using an array of digit strings, node-v8 is 15% faster with the charset string,
+    // node-v9 is 10% faster using digits, node-v11 is 30% faster using digits
+}
+
 // convert length digits of hexid string to shortid
 function _shorten( mongoid, length ) {
     var bits, shortid = '';
@@ -186,13 +212,7 @@ function _shorten( mongoid, length ) {
             (_hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (_hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
             (_hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (_hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
             (_hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (_hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
-        shortid +=
-            _shortDigits[(bits >>> 18) & 0x3F] +
-            _shortDigits[(bits >>> 12) & 0x3F] +
-            _shortDigits[(bits >>>  6) & 0x3F] +
-            _shortDigits[(bits >>>  0) & 0x3F];
-            // node-v6 is 125% faster using an array of digit strings, node-v8 is 15% faster with the charset string,
-            // node-v9 is 10% faster using digits, node-v11 is 30% faster using digits
+        shortid += _shortFormat4(bits);
     }
     return shortid;
 }
@@ -206,11 +226,7 @@ function _unshorten( shortid ) {
             (_shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
             (_shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
             (_shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
-        hexid +=
-            // custom hex formatting is 3x faster than hexFormat()
-            _hexCharset[(bits >>> 20) & 0xF] + _hexCharset[(bits >>> 16) & 0xF] +
-            _hexCharset[(bits >>> 12) & 0xF] + _hexCharset[(bits >>>  8) & 0xF] +
-            _hexCharset[(bits >>>  4) & 0xF] + _hexCharset[(bits >>>  0) & 0xF];
+        hexid += _hexFormat6(bits);
     }
     return hexid;
 }
