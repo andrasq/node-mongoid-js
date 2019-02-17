@@ -82,10 +82,18 @@ fetch more blocks until the next second.  The second starts when the clock reads
 milliseconds, not when the first id is fetched.  The second ends 1000
 milliseconds after the start, when the clock next reads _*000_ milliseconds.
 
-    var ids = new MongoId();
+    var ids = new MongoId(0x001230);
     var id1 = ids.fetch();              // => "543f3789001230649f000001"
     var id2 = ids.fetch();              // => "543f3789001230649f000002"
+    var id3 = ids.fetchShort();         // => "K2wrXF-HB5HU---2"
+    var id4 = ids.fetch();              // => "543f3789001230649f000004"
 
+#### ids.fetchShort( )
+
+return the next id in the sequence, encoded to be more compact.  The id itself is the same as
+returned by `fetch()`, but expressed as a shorter string.  Shortids can be converted to and
+from ordinary hexids; see `shorten` and `unshorten` below.  Note that the `parse` and related
+functions operate on hexids.
 
 #### ids.parse( [idString] )
 
@@ -160,7 +168,7 @@ base64).  Note that this changes the shortid charset globally, for all MongoId i
 ## Change Log
 
 - 1.2.0 - new static methods `shorten` and `unshorten`, block until next second if out of ids (do not throw),
-          optional idString to id.parse(), 30% faster `fetch()`
+          optional idString to id.parse(), 30% faster `fetch()`, new method `fetchShort()`
 - 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
   change unit tests to work on systems with longer than 16 bit process ids
 - 1.1.2 - put under travis ci tests, add coverage,  move `qnit` dev dependency into .travis.yml

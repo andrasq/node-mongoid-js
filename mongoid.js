@@ -39,6 +39,8 @@ setCharset('-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz', 6
 
 
 function MongoId( machineId ) {
+    // TODO: if (typeof machineId === 'object') ... machineId || sysid, processId || pid
+
     // if called as a function, return an id from the singleton
     if (!(this instanceof MongoId)) return globalSingleton.fetch();
 
@@ -46,14 +48,18 @@ function MongoId( machineId ) {
     if (!machineId) machineId = Math.floor(Math.random() * 0x1000000);
     else if (machineId < 0 || machineId >= 0x1000000)
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
+    this.machineId = machineId;
 
     // if process.pid not available, use a random 2-byte number between 10k and 30k
     // suggestions for better browserify support from @cordovapolymer at github
     var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
+    this.processId = processId;
 
     this.processIdStr = _hexFormat6(machineId) + _hexFormat4(processId);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
+    this.idPrefixShort = "---";
+    this.shortTimestamp = null;
     this.id = null;
     this.sequenceStartTimestamp = _getTimestamp();
 }
@@ -88,7 +94,8 @@ var timestampCache = (function() {
 _getTimestamp = MongoId.prototype._getTimestamp = timestampCache[0];
 _getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 
-MongoId.prototype.fetch = function fetch() {
+// return the next sequence id
+MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
     this.sequenceId += 1;
     if (this.sequenceId >= 0x1000000) {
         // sequence wrapped, we can make an id only if the timestamp advanced
@@ -102,11 +109,39 @@ MongoId.prototype.fetch = function fetch() {
     }
 
     if ((this.sequenceId & 0xF) === 0) {
+        // TODO: this.sequencePrefix = null;
         this.sequencePrefix = _hexFormat4(this.sequenceId >>> 8) + _hexDigits[(this.sequenceId >>> 4) & 0xF];
+        if ((this.sequenceId & 0x3F) === 0) this.sequencePrefixShort = null;
     }
-    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
+    return this.sequenceId;
+}
+
+MongoId.prototype.fetch = function fetch( ) {
+    var sequenceId = this._getNextSequenceId();
+    if (!this.sequencePrefix) this.sequencePrefix = _hexFormat4(sequenceId >>> 8) + _hexDigits[(sequenceId >>> 4) & 0xF];
+    //return this.idPrefixHex + this.sequencePrefix + _hexDigits[sequenceId % 16];
+    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[sequenceId % 16];
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
+
+// fetchShort: 93m/s if timestamp never expires, 82m/s with 100 reuses.
+MongoId.prototype.fetchShort = function fetchShort( ) {
+    var lastTimestamp = this.shortTimestamp;
+    var timestamp = this._getTimestamp();
+    if (timestamp !== lastTimestamp) {
+        var sec = timestamp / 1000;
+        this.shortTimestamp = timestamp;
+        this.idPrefixShort =
+            _shortFormat4(sec >>> 8) +
+            _shortFormat4(sec << 16 | this.machineId >>> 8) +
+            _shortFormat4(this.machineId << 16 | this.processId);
+    }
+
+    var sequenceId = this._getNextSequenceId();
+    if (!this.sequencePrefixShort) this.sequencePrefixShort = _shortFormat3(sequenceId >>> 6);
+
+    return this.idPrefixShort + this.sequencePrefixShort + _shortDigits[sequenceId & 0x3F];
+}
 
 // typeset the 8, 6 and 4 least significant hex digits from the number
 function _hexFormat8( n ) {

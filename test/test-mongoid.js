@@ -137,13 +137,15 @@ module.exports.MongoId_class = {
     'should block until next second if wrapped in same second': function(t) {
         if (process.env.NODE_COVERAGE === 'Y') t.skip();
         factory = new MongoId(0x111111);
-        var id1 = factory.fetch();
-        factory.sequenceId = 0xffffff;
+        factory.sequenceId = 0xfffffe;
         factory.sequencePrefix = "fffff";
+        var id1 = factory.fetch();
         // note: race condition: this test will fail if the seconds increase before the fetch
         //t.throws(function(){ factory.fetch() }, 'should throw');
         var id2 = factory.fetch();
         t.equal(MongoId.parse(id2).timestamp, MongoId.parse(id1).timestamp + 1);
+        t.equal(MongoId.parse(id1).sequence, 0xffffff);
+        t.equal(MongoId.parse(id2).sequence, 0);
         t.done();
     },
 
@@ -317,6 +319,29 @@ module.exports.MongoId_class = {
             var id = MongoId();
             var short = MongoId.shorten(id);
             t.equal(MongoId.unshorten(short), id);
+        }
+        t.done();
+    },
+
+    'should fetchShort': function(t) {
+        var ids = new MongoId();
+        var id1 = ids.fetch();
+        var id2 = ids.fetchShort();
+        var id3 = ids.fetch();
+        t.equal(id1.length, 24);
+        t.equal(id2.length, 16);
+        t.ok(id1 < MongoId.unshorten(id2));
+        t.ok(MongoId.unshorten(id2) < id3);
+        t.done();
+    },
+
+    'short ids should be ascending': function(t) {
+        var ids = new MongoId();
+        var id = ids.fetchShort();
+        for (var i=0; i<1000000; i++) {
+            var id2 = ids.fetchShort();
+            t.ok(id < id2);
+            id = id2;
         }
         t.done();
     },
