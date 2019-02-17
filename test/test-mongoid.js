@@ -158,6 +158,17 @@ module.exports.MongoId_class = {
         t.done();
     },
 
+    'should corretly handle sequenceId lsb carry-out': function(t) {
+        factory = new MongoId(1);
+        factory.sequenceId = 0x12345e;
+        factory.sequencePrefix = '12345';
+        var id1 = factory.fetch();
+        var id2 = factory.fetch();
+        t.equal(factory.sequenceId, 0x123460);
+        t.equal(factory.sequencePrefix, '12346');
+        t.done();
+    },
+
     'id should include timestamp': function(t) {
         var t1 = Date.now();
         var id = new MongoId().toString();

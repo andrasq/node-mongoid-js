@@ -102,7 +102,7 @@ MongoId.prototype.fetch = function fetch() {
     }
 
     if ((this.sequenceId & 0xF) === 0) {
-        this.sequencePrefix = _hexFormat4(this.sequenceId >>> 4) + _hexDigits[this.sequenceId & 0xF];
+        this.sequencePrefix = _hexFormat4(this.sequenceId >>> 8) + _hexDigits[(this.sequenceId >>> 4) & 0xF];
     }
     return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
 };
