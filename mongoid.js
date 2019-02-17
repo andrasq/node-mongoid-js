@@ -20,23 +20,8 @@
 
 'use strict';
 
-module.exports = MongoId;
-module.exports.mongoid = mongoid;
-module.exports.MongoId = MongoId;
-module.exports._singleton = globalSingleton;
 
 var globalSingleton = null;
-
-function mongoid( ) {
-    if (globalSingleton) {
-        return globalSingleton.fetch();
-    }
-    else {
-        globalSingleton = new MongoId();
-        module.exports._singleton = globalSingleton;
-        return globalSingleton.fetch();
-    }
-}
 
 var _getTimestamp = null;
 var _getTimestampStr = null;
@@ -55,7 +40,7 @@ setCharset('-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz', 6
 
 function MongoId( machineId ) {
     // if called as a function, return an id from the singleton
-    if (this === global || !this) return mongoid();
+    if (!(this instanceof MongoId)) return globalSingleton.fetch();
 
     // if no machine id specified, use a 3-byte random number
     if (!machineId) machineId = Math.floor(Math.random() * 0x1000000);
@@ -238,3 +223,12 @@ MongoId.unshorten = function unshorten( shortid ) { return _unshorten(shortid); 
 // accelerate method access
 MongoId.prototype = toStruct(MongoId.prototype);
 function toStruct(hash) { return toStruct.prototype = hash }
+
+
+var globalSingleton = new MongoId();
+module.exports = MongoId;
+module.exports.MongoId = MongoId;
+
+module.exports._singleton = globalSingleton;
+module.exports.mongoid = function() { return module.exports._Singleton.fetch() };
+module.exports.fetchShort = function() { return module.exports._singleton.fetchShort() };
