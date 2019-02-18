@@ -240,8 +240,7 @@ MongoId.parse = function parse( idstring ) {
 };
 // make the class method available as an instance method too
 MongoId.prototype.parse = function parse( hexid ) {
-    // TODO: parse(hexid || this.toString());
-    return MongoId.parse(this.toString());
+    return MongoId.parse(hexid || this.toString());
 };
 
 // return the javascript timestamp (milliseconds) embedded in the id.
@@ -249,8 +248,7 @@ MongoId.prototype.parse = function parse( hexid ) {
 MongoId.getTimestamp = function getTimestamp( idstring ) {
     return parseInt(idstring.slice(0, 8), 16) * 1000;
 };
-MongoId.prototype.getTimestamp = function getTimestamp( hexid ) {
-    // TODO: unit tests assume: getTimestamp( hexid || this.toString() )
+MongoId.prototype.getTimestamp = function getTimestamp( ) {
     return MongoId.getTimestamp(this.toString());
 };
 
