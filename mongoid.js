@@ -20,52 +20,101 @@
 
 'use strict';
 
-module.exports = MongoId;
-module.exports.mongoid = mongoid;
-module.exports.MongoId = MongoId;
-module.exports._singleton = globalSingleton;
 
 var globalSingleton = null;
-
-function mongoid( ) {
-    if (globalSingleton) {
-        return globalSingleton.fetch();
-    }
-    else {
-        globalSingleton = new MongoId();
-        module.exports._singleton = globalSingleton;
-        return globalSingleton.fetch();
-    }
-}
 
 var _getTimestamp = null;
 var _getTimestampStr = null;
 
+var _hexCharset = '0123456789abcdef';
+var _hexCharvals = new Array(128);
+var _hexDigits = new Array(16);
+setCharset('0123456789abcdef', 16, _hexCharvals, _hexDigits);
+
+// candidates for shortchars were: *,.-/^_|~  We use - and _ like base64url, but not in base64 order.
+var _shortCharset = MongoId.shortCharset = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+var _shortCharvals = new Array(128);
+var _shortDigits = new Array(64);
+setCharset('-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz', 64, _shortCharvals, _shortDigits);
+
+
 function MongoId( machineId ) {
+    // TODO: if (typeof machineId === 'object') ... machineId || sysid, processId || pid
+
     // if called as a function, return an id from the singleton
-    if (this === global || !this) return mongoid();
+    if (!(this instanceof MongoId)) return globalSingleton.fetch();
 
     // if no machine id specified, use a 3-byte random number
     if (!machineId) machineId = Math.floor(Math.random() * 0x1000000);
     else if (machineId < 0 || machineId >= 0x1000000)
         throw new Error("machine id out of range 0.." + parseInt(0x1000000));
+    this.machineId = machineId;
 
     // if process.pid not available, use a random 2-byte number between 10k and 30k
     // suggestions for better browserify support from @cordovapolymer at github
     var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
+    this.processId = processId;
 
-    this.processIdStr = hexFormat(machineId, 6) + hexFormat(processId, 4);
+    this.processIdStr = _hexFormat6(machineId) + _hexFormat4(processId);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
+    this.sequencePrefixShort = "---";
+    this.idPrefixHex = null;
+    this.idPrefixShort = null;
+    this.shortTimestamp = NaN;
+    this.hexTimestamp = NaN;
     this.id = null;
     this.sequenceStartTimestamp = _getTimestamp();
 }
 
+/**
+// timebase adapted from qlogger: added isValid, changed to seconds
+function Timebase( ) {
+    var self = this;
+    reset();
+
+    // cache values until timestamp changes
+    this._cache = {};
+    this.set = function set(key, value) { this._cache[key] = value };
+    this.get = function get(key) { return this._cache[key] };
+
+    this.isValid = function isValid() {
+        var sec = this.seconds;
+        return sec !== null && (--this.reuseLimit >= 0 || this.refresh() === sec);
+    };
+    this.getSeconds = function getSeconds() {
+        return (this.seconds && --this.reuseLimit >= 0) ? this.seconds : this.refresh();
+    }
+    this.refresh = function refresh() {
+        var sec = this.seconds;
+        var now = new Date().getTime();
+        this.timeoutTimer = this.timeoutTimer || setTimeout(reset, (100 - now % 100));
+        this.seconds = (now / 1000) >>> 0;
+        if (this.seconds !== sec) this._cache = {};
+        this.reuseLimit = 100;
+        return this.seconds;
+    }
+
+    function reset() {
+        clearTimeout(self.timeoutTimer);
+        self.timeoutTimer = null;
+        self.seconds = null;
+        self.reuseLimit = 100;
+        self._cache = {};
+    }
+}
+**/
+
+// TODO: make this closure into a singleton
+// TODO: deprecate timestampStr
 var timestampCache = (function() {
     var _timestamp;
     var _timestampStr;
     var _ncalls = 0;
     var _timeout = null;
+    function expireTimestamp() {
+        _timeout = _timestamp = null;
+    }
     function getTimestamp( ) {
         if (!_timestamp || ++_ncalls > 1000) getTimestampStr();
         return _timestamp;
@@ -75,11 +124,11 @@ var timestampCache = (function() {
             _ncalls = 0;
             _timestamp = Date.now();
             var msToNextTimestamp = 1000 - _timestamp % 1000;
-            if (_timeout) { clearTimeout(_timeout); _timeout = null }
             // reuse the timestamp for up to 100 ms, then get a new one
-            _timeout = setTimeout(function(){ _timeout = _timestamp = null; }, Math.min(msToNextTimestamp - 1, 100));
+            // reuse an already running timeout timer, the extra timeout is less overhead than creating anew
+            if (!_timeout) _timeout = setTimeout(expireTimestamp, Math.min(msToNextTimestamp - 1, 100));
             _timestamp -= _timestamp % 1000;
-            _timestampStr = hexFormat(_timestamp/1000, 8);
+            _timestampStr = _hexFormat8(_timestamp/1000);
         }
         return _timestampStr;
     }
@@ -88,29 +137,87 @@ var timestampCache = (function() {
 _getTimestamp = MongoId.prototype._getTimestamp = timestampCache[0];
 _getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 
-var _hexDigits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
-MongoId.prototype.fetch = function fetch() {
+// return the next sequence id
+MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
     this.sequenceId += 1;
-    if (this.sequenceId >= 0x1000000) {
-        // sequence wrapped, we can make an id only if the timestamp advanced
-        // Busy-wait until the next second so we can restart the sequence.
-        do {
-            // TODO: emit or log a warning so can adjust generator
-            var _timestamp = this._getTimestamp();
-        } while (_timestamp === this.sequenceStartTimestamp);
+    var _timestamp;
+    var mostRecentUse = Math.max(this.sequenceStartTimestamp, this.hexTimestamp || 0, this.shortTimestamp || 0);
+    if (this.sequenceId >= 0x800000 && (_timestamp = this._getTimestamp()) > mostRecentUse) {
+        // roll the sequence on a timestamp change if more than a quarter of the sequence is used up
+        // This helps avoids having to block waiting for a new timestamp when assigning ids.
         this.sequenceId = 0;
         this.sequenceStartTimestamp = _timestamp;
+        this.hexTimestamp = NaN;
+        this.shortTimestamp = NaN;
     }
-
+    if (this.sequenceId >= 0x1000000) {
+        // sequence wrapped, we can make an id only once the timestamp advanced
+        // Block and busy-wait until the next second so we can restart the sequence.
+        // TODO: emit or log a warning so can adjust generator
+        while ((_timestamp = this._getTimestamp()) <= mostRecentUse)
+            ;
+        this.sequenceId = 0;
+        this.sequenceStartTimestamp = _timestamp;
+        this.hexTimestamp = NaN;
+        this.shortTimestamp = NaN;
+    }
     if ((this.sequenceId & 0xF) === 0) {
-        this.sequencePrefix = hexFormat((this.sequenceId >>> 4).toString(16), 5);
+        this.sequencePrefix = null;
+        if ((this.sequenceId & 0x3F) === 0) this.sequencePrefixShort = null;
     }
-    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[this.sequenceId % 16];
+    return this.sequenceId;
+}
+
+MongoId.prototype.fetch = function fetch( ) {
+    // fetch sequenceId first, it waits if necessary
+    var sequenceId = this._getNextSequenceId();
+/**
+    var lastTimestamp = this.hexTimestamp;
+    var timestamp = this._getTimestamp();
+    if (timestamp !== lastTimestamp) {
+        var sec = timestamp / 1000;
+        this.hexTimestamp = timestamp;
+        this.idPrefixHex =
+            _hexFormat8(sec) +
+            _hexFormat6(this.machineId) +
+            _hexFormat4(this.processId);
+    }
+**/
+    if (!this.sequencePrefix) this.sequencePrefix = _hexFormat4(sequenceId >>> 8) + _hexDigits[(sequenceId >>> 4) & 0xF];
+    //return this.idPrefixHex + this.sequencePrefix + _hexDigits[sequenceId % 16];
+    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[sequenceId % 16];
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
 
+MongoId.prototype.fetchShort = function fetchShort( ) {
+    var sequenceId = this._getNextSequenceId();
+    if (this._getTimestamp() !== this.shortTimestamp) {
+        this.shortTimestamp = this._getTimestamp()
+        var sec = this.shortTimestamp / 1000;
+        this.idPrefixShort =
+            _shortFormat4(sec >>> 8) +
+            _shortFormat4(sec << 16 | this.machineId >>> 8) +
+            _shortFormat4(this.machineId << 16 | this.processId);
+    }
+    if (!this.sequencePrefixShort) this.sequencePrefixShort = _shortFormat3(sequenceId >>> 6);
+    return this.idPrefixShort + this.sequencePrefixShort + _shortDigits[sequenceId & 0x3F];
+}
+
+// typeset the 8, 6 and 4 least significant hex digits from the number
+function _hexFormat8( n ) {
+    return _hexDigits[(n >>> 28) & 0xF] + _hexDigits[(n >>> 24) & 0xF] + _hexFormat6(n);
+}
+function _hexFormat6( n ) {
+    return _hexDigits[(n >>> 20) & 0xF] + _hexDigits[(n >>> 16) & 0xF] + _hexFormat4(n);
+}
+function _hexFormat4( n ) {
+    return _hexDigits[(n >>> 12) & 0xF] + _hexDigits[(n >>>  8) & 0xF] +
+           _hexDigits[(n >>>  4) & 0xF] + _hexDigits[(n       ) & 0xF];
+}
+
+// legacy hexFormat, not used but part of the prototype
 var _zeroPadding = ["", "0", "00", "000", "0000", "00000", "000000", "0000000"];
-function hexFormat(n, width) {
+function hexFormat( n, width ) {
     var s = n.toString(16);
     return _zeroPadding[width - s.length] + s;
 }
@@ -132,8 +239,8 @@ MongoId.parse = function parse( idstring ) {
     };
 };
 // make the class method available as an instance method too
-MongoId.prototype.parse = function parse( idstring ) {
-    return MongoId.parse(this.toString());
+MongoId.prototype.parse = function parse( hexid ) {
+    return MongoId.parse(hexid || this.toString());
 };
 
 // return the javascript timestamp (milliseconds) embedded in the id.
@@ -145,53 +252,78 @@ MongoId.prototype.getTimestamp = function getTimestamp( ) {
     return MongoId.getTimestamp(this.toString());
 };
 
-// candidates for shortchars were: *,.-/^_|~  We use - and _
-// shortid charset, 0..63:
-var shortCharset = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
-var shortCharvals = [];
-for (var i=0; i<64; i++) shortCharvals[shortCharset.charCodeAt(i)] = i;
+function setCharset( chars, len, charvals, digits ) {
+    if (chars.length !== len) throw new Error('id charset must have ' + len + ' characters');
+    for (var i=0; i<len; i++) if (chars.charCodeAt(i) > 127) throw new Error('id charset must be 7-bit ASCII');
 
-var hexchars = '0123456789abcdef';              // offset into string faster than lookup
-var hexCharvals = [];                           // lookup faster than if-else test
-for (var i=0; i<10; i++) hexCharvals[0x30 + i] = i;
-for (var i=0; i<6; i++) hexCharvals[0x41 + i] = i + 10;
-for (var i=0; i<6; i++) hexCharvals[0x61 + i] = i + 10;
+    if (len === 16) {
+        _hexCharset = chars;
+        for (var i=0; i<16; i++) digits[i] = chars[i];
+        for (var i=0; i<10; i++) charvals[chars.charCodeAt(i)] = i;
+        for (var i=10; i<16; i++) charvals[chars.charCodeAt(i)] = i;
+        for (var i=10; i<16; i++) charvals[chars.charCodeAt(i) ^ 0x20] = i;
+    }
+    else /*if (len === 64)*/ {
+        _shortCharset = chars;
+        for (var i=0; i<64; i++) charvals[chars.charCodeAt(i)] = i;
+        for (var i=0; i<64; i++) digits[i] = chars[i];
+    }
+}
 
-// convert hexid string to shortid
-MongoId.shorten = function shorten( mongoid ) {
+// typeset the 4 and 3 least significant base64url digits
+function _shortFormat4( n ) {
+    return _shortFormat3(n >>> 6) + _shortDigits[n & 0x3F];
+}
+function _shortFormat3( n ) {
+    return _shortDigits[(n >>> 12) & 0x3F] +
+           _shortDigits[(n >>>  6) & 0x3F] +
+           _shortDigits[(n       ) & 0x3F];
+    // node-v6 is 125% faster using an array of digit strings, node-v8 is 15% faster with the charset string,
+    // node-v9 is 10% faster using digits, node-v11 is 30% faster using digits
+}
+
+// convert length digits of hexid string to shortid
+function _shorten( mongoid, length ) {
     var bits, shortid = '';
     var chars = new Array();
-    for (var ix=0; ix<24; ix+=6) {
+    for (var ix=0; ix<length; ix+=6) {
         bits =
-            (hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
-            (hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
-            (hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
-        shortid +=
-            shortCharset[(bits >>> 18) & 0x3F] +
-            shortCharset[(bits >>> 12) & 0x3F] +
-            shortCharset[(bits >>>  6) & 0x3F] +
-            shortCharset[(bits >>>  0) & 0x3F];
+            // offset into string faster than lookup
+            (_hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (_hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
+            (_hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (_hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
+            (_hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (_hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
+        shortid += _shortFormat4(bits);
     }
     return shortid;
 }
 
 // convert shortid string to hex
-MongoId.unshorten = function unshorten( shortid ) {
+function _unshorten( shortid ) {
     var bits, hexid = '';
     for (var ix=0; ix<16; ix+=4) {
         var bits =
-            (shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
-            (shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
-            (shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
-            (shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
-        hexid +=
-            hexchars[(bits >>> 20) & 0xF] + hexchars[(bits >>> 16) & 0xF] +
-            hexchars[(bits >>> 12) & 0xF] + hexchars[(bits >>>  8) & 0xF] +
-            hexchars[(bits >>>  4) & 0xF] + hexchars[(bits >>>  0) & 0xF];
+            (_shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
+            (_shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
+            (_shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
+            (_shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
+        hexid += _hexFormat6(bits);
     }
     return hexid;
 }
 
+MongoId.setShortCharset = function setShortCharset(chars) { setCharset(chars, 64, _shortCharvals, _shortDigits); MongoId.shortCharset = chars; };
+MongoId.shorten = function shorten( mongoid ) { return _shorten(mongoid, 24); };
+MongoId.unshorten = function unshorten( shortid ) { return _unshorten(shortid); };
+
 // accelerate method access
 MongoId.prototype = toStruct(MongoId.prototype);
 function toStruct(hash) { return toStruct.prototype = hash }
+
+
+var globalSingleton = new MongoId();
+module.exports = MongoId;
+module.exports.MongoId = MongoId;
+
+module.exports._singleton = globalSingleton;
+module.exports.mongoid = function() { return module.exports._singleton.fetch() };
+module.exports.fetchShort = function() { return module.exports._singleton.fetchShort() };

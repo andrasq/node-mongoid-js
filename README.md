@@ -19,7 +19,7 @@ an id string will compare as `<` less than any id string generated after it.
 The uniqueness guarantee requires that process ids be no more than 16 bits
 (`kernel.pid_max` must be configured to 65535 or less on linux).
 
-The 24-byte id string is constructed by concatenating the big-endian hex values of
+The 24-char id string is constructed by concatenating the big-endian hex values of
 - 32 bit count of seconds elapsed since 1970-01-01 00:00:00 GMT
 - 24 bit caller provided system id, else a 24-bit random value
 - 16 bits of the process id (high bits above 16 are ignored)
@@ -82,18 +82,28 @@ fetch more blocks until the next second.  The second starts when the clock reads
 milliseconds, not when the first id is fetched.  The second ends 1000
 milliseconds after the start, when the clock next reads _*000_ milliseconds.
 
-    var ids = new MongoId();
+    var ids = new MongoId(0x001230);
     var id1 = ids.fetch();              // => "543f3789001230649f000001"
     var id2 = ids.fetch();              // => "543f3789001230649f000002"
+    var id3 = ids.fetchShort();         // => "K2wrXF-HB5HU---2"
+    var id4 = ids.fetch();              // => "543f3789001230649f000004"
 
-#### ids.parse( )
+#### ids.fetchShort( )
 
-Parse the factory id string.  If the factory does not yet have an id string, assign one.
-Same as `MongoId.parse(id.toString())`, see below.
+return the next id in the sequence, encoded to be more compact.  The id itself is the same as
+returned by `fetch()`, but expressed as a shorter string.  Shortids can be converted to and
+from ordinary hexids; see `shorten` and `unshorten` below.  Note that the `parse` and related
+functions operate on hexids.
+
+#### ids.parse( [idString] )
+
+With no `idString`, parse the factory's (id object's) built-in id.  If the factory does not
+yet have an id string, assign one.  Same as `MongoId.parse(id.toString())`, see below.  If
+`idString` is provided, parse it just like `MongoId.parse`.
 
 #### ids.getTimestamp( )
 
-Get the timestamp from the factory id string.  Assign a new id string to the factory if it
+Get the timestamp of the id factory itself.  Assign a new id string to the factory if it
 does not yet have one.  Same as `MongoId.getTimestamp(id.getTimestamp())`, see below.
 
 #### ids.toString( )
@@ -134,8 +144,7 @@ precision unix timestamp; getTimestamp() returns that multiplied by 1000.
 
 Convert the hexadecimal mongoid to a more compact string.  The conversion is lossless.
 The converted strings sort into the same respective alpha order as in hexadecimal form, and
-are safe to use in URLs.  The converted character set is `-`, `0-9`, `A-Z`, `_`, and `a-z`,
-in that order (in increasing ASCII order).
+are safe to use in URLs.
 
 ### MongoId.unshorten( shortIdString )
 
@@ -147,9 +156,18 @@ Convert the shortened mongoid string back to its hexadecimal form.
     MongoId.unshorten("K2wrNo2XVLHM---I");
     // => "543f376340e2816497000013"
 
+### MongoId.setShortCharset( charset )
+
+Redefine the shortid character set.  `charset` is expected to be a string of 64 7-bit ASCII characters.
+The default character set is `-`, `0-9`, `A-Z`, `_`, and `a-z`, in that order (ASCII order).
+The character set `'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'` would
+produce base64 shortids (which wouldn't sort into timestamp and sequence order, but would be
+base64).  Note that this changes the shortid charset globally, for all MongoId instances.
+
 
 ## Change Log
 
+- 1.3.0 - new method `fetchShort()`, optional hexid to id.parse(), 25% faster fetch()
 - 1.2.0 - new static methods `shorten` and `unshorten`, block until next second if out of ids (do not throw)
 - 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
   change unit tests to work on systems with longer than 16 bit process ids

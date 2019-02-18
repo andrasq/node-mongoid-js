@@ -1,7 +1,7 @@
 'use stricf';
 
-var mongoid = require('../mongoid');
-var MongoId = require('../mongoid').MongoId;
+var mongoid = require('../');
+var MongoId = require('../').MongoId;
 
 function uniqid() {
     return Math.floor(Math.random() * 0x1000000);
@@ -32,21 +32,32 @@ module.exports.require = {
         },
 
         testShouldExportMongoidFunction: function(test) {
-            var mongoid = require('../mongoid');
-            test.ok(mongoid.mongoid);
+            var mongoid = require('../');
+            test.equal(typeof mongoid.mongoid, 'function');
             var id = mongoid();
+            test.equal(typeof id, 'string');
             test.equal(id.length, 24);
+            var id2 = mongoid.mongoid();
+            test.equal(id2.length, 24);
+            test.done();
+        },
+
+        testShouldExportFetchShortFunction: function(test) {
+            var mongoid = require('../');
+            test.equal(typeof mongoid.fetchShort, 'function');
+            test.equal(typeof mongoid.fetchShort(), 'string');
+            test.equal(mongoid.fetchShort().length, 16);
             test.done();
         },
 
         testShouldExportMongoIdClass: function(test) {
-            var MongoId = require('../mongoid');
+            var MongoId = require('../');
             test.ok(MongoId.MongoId);
             test.done();
         },
 
         testShouldBeUsableAsFunction: function(test) {
-            var mongoid = require('../mongoid');
+            var mongoid = require('../');
             test.ok(typeof mongoid === 'function');
             test.ok(typeof mongoid() === 'string');
             test.done();
@@ -136,24 +147,40 @@ module.exports.MongoId_class = {
 
     'should block until next second if wrapped in same second': function(t) {
         factory = new MongoId(0x111111);
-        var id1 = factory.fetch();
-        factory.sequenceId = 0xffffff;
+        factory.sequenceId = 0xfffffe;
         factory.sequencePrefix = "fffff";
+        var id1 = factory.fetch();
         // note: race condition: this test will fail if the seconds increase before the fetch
         //t.throws(function(){ factory.fetch() }, 'should throw');
         var id2 = factory.fetch();
         t.equal(MongoId.parse(id2).timestamp, MongoId.parse(id1).timestamp + 1);
+        t.equal(MongoId.parse(id1).sequence, 0xffffff);
+        t.equal(MongoId.parse(id2).sequence, 0);
         t.done();
     },
 
     'should wrap at max id': function(t) {
         factory = new MongoId(0x222222);
+        // fetch an id to initialize internal state variables
+        factory.fetch();
         factory.sequenceId = 0xfffffe;
         factory.sequencePrefix = "fffff";
-        factory.sequenceStartTimestamp -= 1000;
+        // manually move back the clock in the object, so it thinks is safe to wrap the sequence
         t.equal(factory.fetch().slice(-6), 'ffffff');
+        factory.sequenceStartTimestamp -= 1000;
         t.equal(factory.fetch().slice(-6), '000000');
         t.equal(factory.fetch().slice(-6), '000001');
+        t.done();
+    },
+
+    'should corretly handle sequenceId lsb carry-out': function(t) {
+        factory = new MongoId(1);
+        factory.sequenceId = 0x12345e;
+        factory.sequencePrefix = '12345';
+        var id1 = factory.fetch();
+        var id2 = factory.fetch();
+        t.equal(factory.sequenceId, 0x123460);
+        t.equal(factory.sequencePrefix, '12346');
         t.done();
     },
 
@@ -206,6 +233,18 @@ module.exports.MongoId_class = {
             t.ok(t2 >= t1);
             t.done();
         }, 100 + 5);
+    },
+
+    testFactoryShouldParseId: function(t) {
+        var ids = new MongoId();
+        var id1 = ids.fetch();
+        var id = ids.toString();                        // id of the ids object, the factory id
+        var id3 = ids.fetch();
+        t.equal(ids.toString(), id);                    // same each time
+        t.deepEqual(ids.parse(), ids.parse(id));        // parse own id by default
+        t.ok(id1 < id);                                 // own id not first
+        t.ok(id < id3);                                 // own id not next
+        t.done();
     },
 
     testShouldParseId: function(test) {
@@ -276,21 +315,85 @@ module.exports.MongoId_class = {
         t.done();
     },
 
-    'shortened ids should be in alpha sort order': function(t) {
-        if (process.env.NODE_COVERAGE === 'Y') t.skip();
+    'shortened ids should be in increasing alpha sort order': function(t) {
         var ids = [], ids2 = [];
-        for (var i=0; i<66000; i++) ids[i] = ids2[i] = MongoId.shorten(MongoId());
-        t.deepEqual(ids, ids2.sort());
+        last = '';
+        for (var i=0; i<100000; i++) {
+            var id = MongoId.shorten(MongoId());
+            t.ok(id > last, "out of order");
+            last = id;
+        }
         t.done();
     },
 
 
     'unshorten should undo shorten': function(t) {
-        for (var i=0; i<66000; i++) {
+        for (var i=0; i<100000; i++) {
             var id = MongoId();
             var short = MongoId.shorten(id);
             t.equal(MongoId.unshorten(short), id);
         }
+        t.done();
+    },
+
+    'should fetchShort': function(t) {
+        var ids = new MongoId();
+        var id1 = ids.fetch();
+        var id2 = ids.fetchShort();
+        var id3 = ids.fetch();
+        t.equal(id1.length, 24);
+        t.equal(id2.length, 16);
+        t.ok(id1 < MongoId.unshorten(id2));
+        t.ok(MongoId.unshorten(id2) < id3);
+        t.done();
+    },
+
+    'short ids should be ascending': function(t) {
+        var ids = new MongoId();
+        var id = ids.fetchShort();
+        for (var i=0; i<1000000; i++) {
+            var id2 = ids.fetchShort();
+            t.ok(id < id2);
+            id = id2;
+        }
+        t.done();
+    },
+
+    'when short ids wrap should wait for unused timestamp to issue next id': function(t) {
+        var ids = new MongoId();
+        if (process.env.NODE_COVERAGE === 'Y') t.skip();
+        // generate many ids to be fetching when the second rolls over, else skip
+        var id = ids.fetchShort();
+        var wrapped = false;
+        for (var i=0; i<20000000; i++) {
+            var id2 = ids.fetchShort();
+            t.ok(id < id2, id + ' vs ' + id2);
+            if (id2.slice(-4) < id.slice(-4)) {
+                wrapped = true;
+                t.ok(id2.slice(0, 8) > id.slice(0, 8));
+            }
+            id = id2;
+        }
+        t.ok(wrapped, "sequence did not wrap");
+        t.done();
+    },
+
+    'should set charset': function(t) {
+        t.throws(function() { MongoId.setShortCharset('abc') }, /64/);
+        t.throws(function() { MongoId.setShortCharset('a\u1234cdefghefghefghaxcdefghefghefghaxcdefghefghefghaxcdefghefghefgh') }, /ascii/i);
+
+        var base64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        MongoId.setShortCharset(base64chars);
+        t.equal(MongoId.shortCharset, base64chars);
+
+        var buf = new Buffer(12);
+        for (var i=0; i<100000; i++) {
+            var id = MongoId();
+            buf.write(id, 'hex');
+            t.equal(MongoId.shorten(id), buf.toString('base64'));
+            t.equal(MongoId.unshorten(MongoId.shorten(id)), id);
+        }
+
         t.done();
     },
 }
