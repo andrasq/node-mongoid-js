@@ -233,6 +233,7 @@ MongoId.prototype.toString = function toString( ) {
 
 MongoId.parse = function parse( idstring ) {
     // TODO: should throw an Error not coerce, but is a breaking change
+    // TODO: also parse short ids
     if (typeof idstring !== 'string') idstring = "" + idstring;
     return {
         timestamp: parseInt(idstring.slice( 0,  0+8), 16),
@@ -285,6 +286,7 @@ function _shortFormat3( n ) {
     // node-v9 is 10% faster using digits, node-v11 is 30% faster using digits
 }
 
+// return the binary value of the 6 hexid chars at offset ix
 function _hexUnformat6( mongoid, ix ) {
     // offset into string faster than lookup
     return (_hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (_hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
@@ -292,12 +294,25 @@ function _hexUnformat6( mongoid, ix ) {
            (_hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (_hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
 }
 
+// return the binary value of the 4 shortid chars at offset ix
 function _shortUnformat4( shortid, ix ) {
     return (_shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
            (_shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
            (_shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
            (_shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
 }
+
+/**
+function _write3bytes( buf, pos, bits ) {
+    buf[pos    ] = ((bits >> 16) & 0xff);
+    buf[pos + 1] = ((bits >>  8) & 0xff);
+    buf[pos + 2] = ((bits      ) & 0xff);
+}
+function _read3bytes( buf, pos ) {
+    return (buf[pos] << 16) + (buf[pos + 1] << 8) + buf[pos + 2];
+}
+var _bitbuf = [ 0,0,0,0, 0,0,0,0, 0,0,0,0 ];
+**/
 
 // convert length digits of hexid string to shortid
 function _shorten( mongoid, length ) {
@@ -311,9 +326,9 @@ function _shorten( mongoid, length ) {
 }
 
 // convert shortid string to hex
-function _unshorten( shortid ) {
+function _unshorten( shortid, length ) {
     var bits, hexid = '';
-    for (var ix=0; ix<16; ix+=4) {
+    for (var ix=0; ix<length; ix+=4) {
         var bits = _shortUnformat4(shortid, ix);
         hexid += _hexFormat6(bits);
     }
@@ -322,7 +337,7 @@ function _unshorten( shortid ) {
 
 MongoId.setShortCharset = function setShortCharset(chars) { setCharset(chars, 64, _shortCharvals, _shortDigits); MongoId.shortCharset = chars; };
 MongoId.shorten = function shorten( mongoid ) { return _shorten(mongoid, 24); };
-MongoId.unshorten = function unshorten( shortid ) { return _unshorten(shortid); };
+MongoId.unshorten = function unshorten( shortid ) { return _unshorten(shortid, 16); };
 
 // accelerate method access
 MongoId.prototype = toStruct(MongoId.prototype);
