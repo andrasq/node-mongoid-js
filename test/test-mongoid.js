@@ -32,15 +32,26 @@ module.exports.require = {
         },
 
         testShouldExportMongoidFunction: function(test) {
-            var mongoid = require('../mongoid');
-            test.ok(mongoid.mongoid);
+            var mongoid = require('../');
+            test.equal(typeof mongoid.mongoid, 'function');
             var id = mongoid();
+            test.equal(typeof id, 'string');
             test.equal(id.length, 24);
+            var id2 = mongoid.mongoid();
+            test.equal(id2.length, 24);
+            test.done();
+        },
+
+        testShouldExportFetchShortFunction: function(test) {
+            var mongoid = require('../');
+            test.equal(typeof mongoid.fetchShort, 'function');
+            test.equal(typeof mongoid.fetchShort(), 'string');
+            test.equal(mongoid.fetchShort().length, 16);
             test.done();
         },
 
         testShouldExportMongoIdClass: function(test) {
-            var MongoId = require('../mongoid');
+            var MongoId = require('../');
             test.ok(MongoId.MongoId);
             test.done();
         },

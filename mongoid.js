@@ -320,5 +320,5 @@ module.exports = MongoId;
 module.exports.MongoId = MongoId;
 
 module.exports._singleton = globalSingleton;
-module.exports.mongoid = function() { return module.exports._Singleton.fetch() };
+module.exports.mongoid = function() { return module.exports._singleton.fetch() };
 module.exports.fetchShort = function() { return module.exports._singleton.fetchShort() };
