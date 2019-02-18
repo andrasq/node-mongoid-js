@@ -124,9 +124,9 @@ var timestampCache = (function() {
             _ncalls = 0;
             _timestamp = Date.now();
             var msToNextTimestamp = 1000 - _timestamp % 1000;
-            if (_timeout) { clearTimeout(_timeout); _timeout = null }
             // reuse the timestamp for up to 100 ms, then get a new one
-            _timeout = setTimeout(expireTimestamp, Math.min(msToNextTimestamp - 1, 100));
+            // reuse an already running timeout timer, the extra timeout is less overhead than creating anew
+            if (!_timeout) _timeout = setTimeout(expireTimestamp, Math.min(msToNextTimestamp - 1, 100));
             _timestamp -= _timestamp % 1000;
             _timestampStr = _hexFormat8(_timestamp/1000);
         }
