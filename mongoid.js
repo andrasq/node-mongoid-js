@@ -140,13 +140,22 @@ _getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 // return the next sequence id
 MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
     this.sequenceId += 1;
+    var _timestamp;
+    var mostRecentUse = Math.max(this.sequenceStartTimestamp || 0, this.hexTimestamp || 0, this.shortTimestamp || 0);
+    if (this.sequenceId >= 0x800000 && (_timestamp = this._getTimestamp()) > mostRecentUse) {
+        // roll the sequence on a timestamp change if more than a quarter of the sequence is used up
+        // This helps avoids having to block waiting for a new timestamp when assigning ids.
+        this.sequenceId = 0;
+        this.sequenceStartTimestamp = _timestamp;
+        this.hexTimestamp = NaN;
+        this.shortTimestamp = NaN;
+    }
     if (this.sequenceId >= 0x1000000) {
-        // sequence wrapped, we can make an id only if the timestamp advanced
-        // Busy-wait until the next second so we can restart the sequence.
-        do {
-            // TODO: emit or log a warning so can adjust generator
-            var _timestamp = this._getTimestamp();
-        } while (_timestamp === this.sequenceStartTimestamp || _timestamp <= this.hexTimestamp || _timestamp <= this.shortTimestamp);
+        // sequence wrapped, we can make an id only once the timestamp advanced
+        // Block and busy-wait until the next second so we can restart the sequence.
+        // TODO: emit or log a warning so can adjust generator
+        while ((_timestamp = this._getTimestamp()) <= mostRecentUse)
+            ;
         this.sequenceId = 0;
         this.sequenceStartTimestamp = _timestamp;
         this.hexTimestamp = NaN;

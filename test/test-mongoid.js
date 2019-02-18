@@ -162,11 +162,13 @@ module.exports.MongoId_class = {
 
     'should wrap at max id': function(t) {
         factory = new MongoId(0x222222);
+        // fetch an id to initialize internal state variables
+        factory.fetch();
         factory.sequenceId = 0xfffffe;
         factory.sequencePrefix = "fffff";
         // manually move back the clock in the object, so it thinks is safe to wrap the sequence
-        factory.sequenceStartTimestamp -= 1000;
         t.equal(factory.fetch().slice(-6), 'ffffff');
+        factory.sequenceStartTimestamp -= 1000;
         t.equal(factory.fetch().slice(-6), '000000');
         t.equal(factory.fetch().slice(-6), '000001');
         t.done();
@@ -358,16 +360,22 @@ module.exports.MongoId_class = {
         t.done();
     },
 
-    'short ids should wrap sequence and increment timestamp if second timestamp has been used already': function(t) {
+    'when short ids wrap should wait for unused timestamp to issue next id': function(t) {
         var ids = new MongoId();
         if (process.env.NODE_COVERAGE === 'Y') t.skip();
         // generate many ids to be fetching when the second rolls over, else skip
         var id = ids.fetchShort();
+        var wrapped = false;
         for (var i=0; i<20000000; i++) {
             var id2 = ids.fetchShort();
             t.ok(id < id2, id + ' vs ' + id2);
+            if (id2.slice(-4) < id.slice(-4)) {
+                wrapped = true;
+                t.ok(id2.slice(0, 8) > id.slice(0, 8));
+            }
             id = id2;
         }
+        t.ok(wrapped, "sequence did not wrap");
         t.done();
     },
 
