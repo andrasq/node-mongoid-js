@@ -64,6 +64,42 @@ function MongoId( machineId ) {
     this.sequenceStartTimestamp = _getTimestamp();
 }
 
+// timebase adapted from qlogger: added isValid, changed to seconds
+function Timebase( ) {
+    var self = this;
+    reset();
+
+    // cache values until timestamp changes
+    this._cache = {};
+    this.set = function set(key, value) { this._cache[key] = value };
+    this.get = function get(key) { return this._cache[key] };
+
+    this.isValid = function isValid() {
+        var sec = this.seconds;
+        return sec !== null && (--this.reuseLimit >= 0 || this.refresh() === sec);
+    };
+    this.getSeconds = function getSeconds() {
+        return (this.seconds && --this.reuseLimit >= 0) ? this.seconds : this.refresh();
+    }
+    this.refresh = function refresh() {
+        var sec = this.seconds;
+        var now = new Date().getTime();
+        this.timeoutTimer = this.timeoutTimer || setTimeout(reset, (100 - now % 100));
+        this.seconds = (now / 1000) >>> 0;
+        if (this.seconds !== sec) this._cache = {};
+        this.reuseLimit = 100;
+        return this.seconds;
+    }
+
+    function reset() {
+        clearTimeout(self.timeoutTimer);
+        self.timeoutTimer = null;
+        self.seconds = null;
+        self.reuseLimit = 100;
+        self._cache = {};
+    }
+}
+
 var timestampCache = (function() {
     var _timestamp;
     var _timestampStr;
@@ -179,7 +215,8 @@ MongoId.parse = function parse( idstring ) {
     };
 };
 // make the class method available as an instance method too
-MongoId.prototype.parse = function parse( idstring ) {
+MongoId.prototype.parse = function parse( hexid ) {
+    // TODO: parse(hexid || this.toString());
     return MongoId.parse(this.toString());
 };
 
@@ -188,7 +225,8 @@ MongoId.prototype.parse = function parse( idstring ) {
 MongoId.getTimestamp = function getTimestamp( idstring ) {
     return parseInt(idstring.slice(0, 8), 16) * 1000;
 };
-MongoId.prototype.getTimestamp = function getTimestamp( ) {
+MongoId.prototype.getTimestamp = function getTimestamp( hexid) {
+    // TODO: unit tests assume: getTimestamp( hexid || this.toString() )
     return MongoId.getTimestamp(this.toString());
 };
 
