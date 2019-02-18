@@ -181,11 +181,9 @@ MongoId.prototype.mongoid = MongoId.prototype.fetch;
 // fetchShort: 93m/s if timestamp never expires, 82m/s with 100 reuses.
 MongoId.prototype.fetchShort = function fetchShort( ) {
     var sequenceId = this._getNextSequenceId();
-    var lastTimestamp = this.shortTimestamp;
-    var timestamp = this._getTimestamp();
-    if (timestamp !== lastTimestamp) {
-        var sec = timestamp / 1000;
-        this.shortTimestamp = timestamp;
+    if (this._getTimestamp() !== this.shortTimestamp) {
+        this.shortTimestamp = this._getTimestamp()
+        var sec = this.shortTimestamp / 1000;
         this.idPrefixShort =
             _shortFormat4(sec >>> 8) +
             _shortFormat4(sec << 16 | this.machineId >>> 8) +
