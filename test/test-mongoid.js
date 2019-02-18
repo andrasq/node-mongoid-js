@@ -146,7 +146,6 @@ module.exports.MongoId_class = {
     },
 
     'should block until next second if wrapped in same second': function(t) {
-        if (process.env.NODE_COVERAGE === 'Y') t.skip();
         factory = new MongoId(0x111111);
         factory.sequenceId = 0xfffffe;
         factory.sequencePrefix = "fffff";
