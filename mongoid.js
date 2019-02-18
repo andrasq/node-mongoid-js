@@ -67,6 +67,7 @@ function MongoId( machineId ) {
     this.sequenceStartTimestamp = _getTimestamp();
 }
 
+/**
 // timebase adapted from qlogger: added isValid, changed to seconds
 function Timebase( ) {
     var self = this;
@@ -102,6 +103,7 @@ function Timebase( ) {
         self._cache = {};
     }
 }
+**/
 
 // TODO: make this closure into a singleton
 // TODO: deprecate timestampStr
