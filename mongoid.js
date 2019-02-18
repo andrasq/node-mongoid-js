@@ -55,11 +55,13 @@ function MongoId( machineId ) {
     var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
     this.processId = processId;
 
-    this.processIdStr = _hexFormat6(machineId) + _hexFormat4(processId);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
-    this.idPrefixShort = "---";
+    this.sequencePrefixShort = "---";
+    this.idPrefixHex = null;
+    this.idPrefixShort = null;
     this.shortTimestamp = null;
+    this.hexTimestamp = null;
     this.id = null;
     this.sequenceStartTimestamp = _getTimestamp();
 }
@@ -100,6 +102,8 @@ function Timebase( ) {
     }
 }
 
+// TODO: make this closure into a singleton
+// TODO: deprecate timestampStr
 var timestampCache = (function() {
     var _timestamp;
     var _timestampStr;
@@ -153,15 +157,26 @@ MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
 }
 
 MongoId.prototype.fetch = function fetch( ) {
+    // fetch sequenceId first, it waits if necessary
     var sequenceId = this._getNextSequenceId();
+    var lastTimestamp = this.hexTimestamp;
+    var timestamp = this._getTimestamp();
+    if (timestamp !== lastTimestamp) {
+        var sec = timestamp / 1000;
+        this.hexTimestamp = timestamp;
+        this.idPrefixHex =
+            _hexFormat8(sec) +
+            _hexFormat6(this.machineId) +
+            _hexFormat4(this.processId);
+    }
     if (!this.sequencePrefix) this.sequencePrefix = _hexFormat4(sequenceId >>> 8) + _hexDigits[(sequenceId >>> 4) & 0xF];
-    //return this.idPrefixHex + this.sequencePrefix + _hexDigits[sequenceId % 16];
-    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[sequenceId % 16];
+    return this.idPrefixHex + this.sequencePrefix + _hexDigits[sequenceId % 16];
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
 
 // fetchShort: 93m/s if timestamp never expires, 82m/s with 100 reuses.
 MongoId.prototype.fetchShort = function fetchShort( ) {
+    var sequenceId = this._getNextSequenceId();
     var lastTimestamp = this.shortTimestamp;
     var timestamp = this._getTimestamp();
     if (timestamp !== lastTimestamp) {
@@ -172,10 +187,7 @@ MongoId.prototype.fetchShort = function fetchShort( ) {
             _shortFormat4(sec << 16 | this.machineId >>> 8) +
             _shortFormat4(this.machineId << 16 | this.processId);
     }
-
-    var sequenceId = this._getNextSequenceId();
     if (!this.sequencePrefixShort) this.sequencePrefixShort = _shortFormat3(sequenceId >>> 6);
-
     return this.idPrefixShort + this.sequencePrefixShort + _shortDigits[sequenceId & 0x3F];
 }
 
