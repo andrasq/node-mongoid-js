@@ -175,11 +175,9 @@ MongoId.prototype.fetch = function fetch( ) {
     // fetch sequenceId first, it waits if necessary
     var sequenceId = this._getNextSequenceId();
 /**
-    var lastTimestamp = this.hexTimestamp;
-    var timestamp = this._getTimestamp();
-    if (timestamp !== lastTimestamp) {
-        var sec = timestamp / 1000;
-        this.hexTimestamp = timestamp;
+    if (this._getTimestamp() !== this.hexTimestamp) {
+        this.hexTimestamp = this._getTimestamp();
+        var sec = this.hexTimestamp / 1000;
         this.idPrefixHex =
             _hexFormat8(sec) +
             _hexFormat6(this.machineId) +
