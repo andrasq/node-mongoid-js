@@ -208,7 +208,7 @@ MongoId.prototype.fetchShort = function fetchShort( ) {
 
 // typeset the 8, 6 and 4 least significant hex digits from the number
 function _hexFormat8( n ) {
-    return _hexDigits[(n >>> 28) & 0xF] + _hexDigits[(n >>> 24) & 0xF] + _hexFormat6(n);
+    return _hexFormat4(n >>> 16) + _hexFormat4(n);
 }
 function _hexFormat6( n ) {
     return _hexDigits[(n >>> 20) & 0xF] + _hexDigits[(n >>> 16) & 0xF] + _hexFormat4(n);
