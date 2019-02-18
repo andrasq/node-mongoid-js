@@ -209,6 +209,14 @@ module.exports.MongoId_class = {
         t.done();
     },
 
+    'id should use low 16 bits of pid even if zeroes': function(t) {
+        process.pid = 0x120000;
+        var id = new MongoId(0xffffff).fetch();
+        t.equal(id.slice(8, 14), 'ffffff');
+        t.equal(id.slice(14, 18), '0000');
+        t.done();
+    },
+
     'id should include a random pid if process.pid is not set': function(t) {
         delete process.pid;
         var id = new MongoId().toString();

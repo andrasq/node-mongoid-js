@@ -52,7 +52,7 @@ function MongoId( machineId ) {
 
     // if process.pid not available, use a random 2-byte number between 10k and 30k
     // suggestions for better browserify support from @cordovapolymer at github
-    var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
+    var processId = process.pid ? (process.pid & 0xFFFF) : 10000 + Math.floor(Math.random() * 20000);
     this.processId = processId;
 
     this.processIdStr = _hexFormat6(machineId) + _hexFormat4(processId);
