@@ -140,26 +140,29 @@ _getTimestampStr = MongoId.prototype._getTimestampStr = timestampCache[1];
 // return the next sequence id
 MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
     this.sequenceId += 1;
-    var _timestamp;
-    var mostRecentUse = Math.max(this.sequenceStartTimestamp, this.hexTimestamp || 0, this.shortTimestamp || 0);
-    if (this.sequenceId >= 0x800000 && (_timestamp = this._getTimestamp()) > mostRecentUse) {
-        // roll the sequence on a timestamp change if more than a quarter of the sequence is used up
-        // This helps avoids having to block waiting for a new timestamp when assigning ids.
-        this.sequenceId = 0;
-        this.sequenceStartTimestamp = _timestamp;
-        this.hexTimestamp = NaN;
-        this.shortTimestamp = NaN;
-    }
-    if (this.sequenceId >= 0x1000000) {
-        // sequence wrapped, we can make an id only once the timestamp advanced
-        // Block and busy-wait until the next second so we can restart the sequence.
-        // TODO: emit or log a warning so can adjust generator
-        while ((_timestamp = this._getTimestamp()) <= mostRecentUse)
-            ;
-        this.sequenceId = 0;
-        this.sequenceStartTimestamp = _timestamp;
-        this.hexTimestamp = NaN;
-        this.shortTimestamp = NaN;
+    if (this.sequenceId > 0x800000) {
+        var _timestamp = this._getTimestamp();
+        // TODO: check whether faster to maintain this._mostRecentUse instead of computing it
+        var mostRecentUse = Math.max(this.sequenceStartTimestamp, this.hexTimestamp || 0, this.shortTimestamp || 0);
+        if (_timestamp > mostRecentUse) {
+            // also roll the sequence on this timestamp change if more than half of the sequence is used up
+            // This helps avoid having to block waiting for a new timestamp when assigning ids.
+            this.sequenceId = 0;
+            this.sequenceStartTimestamp = _timestamp;
+            this.hexTimestamp = NaN;
+            this.shortTimestamp = NaN;
+        }
+        if (this.sequenceId >= 0x1000000) {
+            // sequence wrapped, we can make an id only once the timestamp advanced
+            // Block and busy-wait until the next second so we can restart the sequence.
+            // TODO: emit or log a warning so can adjust generator
+            while ((_timestamp = this._getTimestamp()) <= mostRecentUse)
+                ;
+            this.sequenceId = 0;
+            this.sequenceStartTimestamp = _timestamp;
+            this.hexTimestamp = NaN;
+            this.shortTimestamp = NaN;
+        }
     }
     if ((this.sequenceId & 0xF) === 0) {
         this.sequencePrefix = null;
