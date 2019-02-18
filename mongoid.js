@@ -47,7 +47,7 @@ function MongoId( machineId ) {
     // if no machine id specified, use a 3-byte random number
     if (!machineId) machineId = Math.floor(Math.random() * 0x1000000);
     else if (machineId < 0 || machineId >= 0x1000000)
-        throw new Error("machine id out of range 0.." + parseInt(0x1000000));
+        throw new Error("machine id out of range 0.." + parseInt(0xffffff));
     this.machineId = machineId;
 
     // if process.pid not available, use a random 2-byte number between 10k and 30k

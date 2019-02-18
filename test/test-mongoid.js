@@ -226,8 +226,8 @@ module.exports.MongoId_class = {
     },
 
     'it should reject a machine id out of range': function(t) {
-        t.throws(function(){ new MongoId(-1) });
-        t.throws(function(){ new MongoId(0xffffff + 1) });
+        t.throws(function(){ new MongoId(-1) }, /out of range/);
+        t.throws(function(){ new MongoId(0xffffff + 1) }, /out of range/);
         t.done();
     },
 
