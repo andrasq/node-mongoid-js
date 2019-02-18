@@ -167,7 +167,7 @@ base64).  Note that this changes the shortid charset globally, for all MongoId i
 
 ## Change Log
 
-- 1.3.0 - new method `fetchShort()`, optional hexid to id.parse(), 25% faster fetch()
+- 1.3.0 - new methods `fetchShort()` and `setShortCharset`, optional hexid to id.parse(), 25% faster fetch()
 - 1.2.0 - new static methods `shorten` and `unshorten`, block until next second if out of ids (do not throw)
 - 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
   change unit tests to work on systems with longer than 16 bit process ids
