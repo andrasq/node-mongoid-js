@@ -285,16 +285,26 @@ function _shortFormat3( n ) {
     // node-v9 is 10% faster using digits, node-v11 is 30% faster using digits
 }
 
+function _hexUnformat6( mongoid, ix ) {
+    // offset into string faster than lookup
+    return (_hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (_hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
+           (_hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (_hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
+           (_hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (_hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
+}
+
+function _shortUnformat4( shortid, ix ) {
+    return (_shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
+           (_shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
+           (_shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
+           (_shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
+}
+
 // convert length digits of hexid string to shortid
 function _shorten( mongoid, length ) {
     var bits, shortid = '';
     var chars = new Array();
     for (var ix=0; ix<length; ix+=6) {
-        bits =
-            // offset into string faster than lookup
-            (_hexCharvals[mongoid.charCodeAt(ix + 0)] << 20) | (_hexCharvals[mongoid.charCodeAt(ix + 1)] << 16) |
-            (_hexCharvals[mongoid.charCodeAt(ix + 2)] << 12) | (_hexCharvals[mongoid.charCodeAt(ix + 3)] <<  8) |
-            (_hexCharvals[mongoid.charCodeAt(ix + 4)] <<  4) | (_hexCharvals[mongoid.charCodeAt(ix + 5)] <<  0);
+        bits = _hexUnformat6(mongoid, ix);
         shortid += _shortFormat4(bits);
     }
     return shortid;
@@ -304,11 +314,7 @@ function _shorten( mongoid, length ) {
 function _unshorten( shortid ) {
     var bits, hexid = '';
     for (var ix=0; ix<16; ix+=4) {
-        var bits =
-            (_shortCharvals[shortid.charCodeAt(ix + 0)] << 18) |
-            (_shortCharvals[shortid.charCodeAt(ix + 1)] << 12) |
-            (_shortCharvals[shortid.charCodeAt(ix + 2)] <<  6) |
-            (_shortCharvals[shortid.charCodeAt(ix + 3)] <<  0);
+        var bits = _shortUnformat4(shortid, ix);
         hexid += _hexFormat6(bits);
     }
     return hexid;
