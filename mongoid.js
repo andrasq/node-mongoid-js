@@ -61,8 +61,8 @@ function MongoId( machineId ) {
     this.sequencePrefixShort = "---";
     this.idPrefixHex = null;
     this.idPrefixShort = null;
-    this.shortTimestamp = null;
-    this.hexTimestamp = null;
+    this.shortTimestamp = NaN;
+    this.hexTimestamp = NaN;
     this.id = null;
     this.sequenceStartTimestamp = _getTimestamp();
 }
@@ -146,9 +146,11 @@ MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
         do {
             // TODO: emit or log a warning so can adjust generator
             var _timestamp = this._getTimestamp();
-        } while (_timestamp === this.sequenceStartTimestamp);
+        } while (_timestamp === this.sequenceStartTimestamp || _timestamp <= this.hexTimestamp || _timestamp <= this.shortTimestamp);
         this.sequenceId = 0;
         this.sequenceStartTimestamp = _timestamp;
+        this.hexTimestamp = NaN;
+        this.shortTimestamp = NaN;
     }
     if ((this.sequenceId & 0xF) === 0) {
         this.sequencePrefix = null;
@@ -178,7 +180,6 @@ MongoId.prototype.fetch = function fetch( ) {
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
 
-// fetchShort: 93m/s if timestamp never expires, 82m/s with 100 reuses.
 MongoId.prototype.fetchShort = function fetchShort( ) {
     var sequenceId = this._getNextSequenceId();
     if (this._getTimestamp() !== this.shortTimestamp) {

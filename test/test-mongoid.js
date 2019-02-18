@@ -358,6 +358,19 @@ module.exports.MongoId_class = {
         t.done();
     },
 
+    'short ids should wrap sequence and increment timestamp if second timestamp has been used already': function(t) {
+        var ids = new MongoId();
+        if (process.env.NODE_COVERAGE === 'Y') t.skip();
+        // generate many ids to be fetching when the second rolls over, else skip
+        var id = ids.fetchShort();
+        for (var i=0; i<20000000; i++) {
+            var id2 = ids.fetchShort();
+            t.ok(id < id2, id + ' vs ' + id2);
+            id = id2;
+        }
+        t.done();
+    },
+
     'should set charset': function(t) {
         t.throws(function() { MongoId.setShortCharset('abc') }, /64/);
         t.throws(function() { MongoId.setShortCharset('a\u1234cdefghefghefghaxcdefghefghefghaxcdefghefghefghaxcdefghefghefgh') }, /ascii/i);
