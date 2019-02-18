@@ -151,8 +151,7 @@ MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
         this.sequenceStartTimestamp = _timestamp;
     }
     if ((this.sequenceId & 0xF) === 0) {
-        // TODO: this.sequencePrefix = null;
-        this.sequencePrefix = _hexFormat4(this.sequenceId >>> 8) + _hexDigits[(this.sequenceId >>> 4) & 0xF];
+        this.sequencePrefix = null;
         if ((this.sequenceId & 0x3F) === 0) this.sequencePrefixShort = null;
     }
     return this.sequenceId;
