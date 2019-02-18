@@ -153,6 +153,7 @@ module.exports.MongoId_class = {
         factory = new MongoId(0x222222);
         factory.sequenceId = 0xfffffe;
         factory.sequencePrefix = "fffff";
+        // manually move back the clock in the object, so it thinks is safe to wrap the sequence
         factory.sequenceStartTimestamp -= 1000;
         t.equal(factory.fetch().slice(-6), 'ffffff');
         t.equal(factory.fetch().slice(-6), '000000');

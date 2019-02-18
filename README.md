@@ -168,7 +168,7 @@ base64).  Note that this changes the shortid charset globally, for all MongoId i
 ## Change Log
 
 - 1.2.0 - new static methods `shorten` and `unshorten`, block until next second if out of ids (do not throw),
-          optional idString to id.parse(), 30% faster `fetch()`, new method `fetchShort()`
+          optional idString to id.parse(), 25% faster `fetch()`, new method `fetchShort()`
 - 1.1.3 - only include the low 16 bits of the process id to not overflow 24 chars,
   change unit tests to work on systems with longer than 16 bit process ids
 - 1.1.2 - put under travis ci tests, add coverage,  move `qnit` dev dependency into .travis.yml

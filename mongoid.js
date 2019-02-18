@@ -55,6 +55,7 @@ function MongoId( machineId ) {
     var processId = (process.pid && process.pid & 0xFFFF) || 10000 + Math.floor(Math.random() * 20000);
     this.processId = processId;
 
+    this.processIdStr = _hexFormat6(machineId) + _hexFormat4(processId);
     this.sequenceId = 0;
     this.sequencePrefix = "00000";
     this.sequencePrefixShort = "---";
@@ -147,7 +148,6 @@ MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
         this.sequenceId = 0;
         this.sequenceStartTimestamp = _timestamp;
     }
-
     if ((this.sequenceId & 0xF) === 0) {
         // TODO: this.sequencePrefix = null;
         this.sequencePrefix = _hexFormat4(this.sequenceId >>> 8) + _hexDigits[(this.sequenceId >>> 4) & 0xF];
@@ -159,6 +159,7 @@ MongoId.prototype._getNextSequenceId = function _getNextSequenceId( ) {
 MongoId.prototype.fetch = function fetch( ) {
     // fetch sequenceId first, it waits if necessary
     var sequenceId = this._getNextSequenceId();
+/**
     var lastTimestamp = this.hexTimestamp;
     var timestamp = this._getTimestamp();
     if (timestamp !== lastTimestamp) {
@@ -169,8 +170,10 @@ MongoId.prototype.fetch = function fetch( ) {
             _hexFormat6(this.machineId) +
             _hexFormat4(this.processId);
     }
+**/
     if (!this.sequencePrefix) this.sequencePrefix = _hexFormat4(sequenceId >>> 8) + _hexDigits[(sequenceId >>> 4) & 0xF];
-    return this.idPrefixHex + this.sequencePrefix + _hexDigits[sequenceId % 16];
+    //return this.idPrefixHex + this.sequencePrefix + _hexDigits[sequenceId % 16];
+    return this._getTimestampStr() + this.processIdStr + this.sequencePrefix + _hexDigits[sequenceId % 16];
 };
 MongoId.prototype.mongoid = MongoId.prototype.fetch;
 
@@ -237,7 +240,7 @@ MongoId.prototype.parse = function parse( hexid ) {
 MongoId.getTimestamp = function getTimestamp( idstring ) {
     return parseInt(idstring.slice(0, 8), 16) * 1000;
 };
-MongoId.prototype.getTimestamp = function getTimestamp( hexid) {
+MongoId.prototype.getTimestamp = function getTimestamp( hexid ) {
     // TODO: unit tests assume: getTimestamp( hexid || this.toString() )
     return MongoId.getTimestamp(this.toString());
 };
