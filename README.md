@@ -67,7 +67,8 @@ If no system id is specified, a random 24-bit integer is used.
 
 ## Instance Methods
 
-MongoId objects can act as id factories.  Each factory can also assign itself an id.
+MongoId objects can act as id factories.  Each factory can also assign itself an id,
+done the first time it is converted `toString`.
 Id factories should all have unique system ids, else they may not generate unique ids.
 
     var MongoId = require('mongoid-js').MongoId;
